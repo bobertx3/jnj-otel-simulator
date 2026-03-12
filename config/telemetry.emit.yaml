@@ -1,0 +1,65 @@
+resource:
+  service_version: "0.1.0"
+  deployment_environment: "local-mac"
+
+traces:
+  enabled: true
+  sleep_ms_between_spans: 40
+  spans:
+    - name: "GET /api/v1/queries"
+      attributes:
+        http.method: "GET"
+        http.route: "/api/v1/queries"
+        http.status_code: 200
+      events:
+        - name: "query.parse"
+          attributes:
+            query.length: 142
+    - name: "db.execute"
+      attributes:
+        db.system: "databricks"
+        db.operation: "SELECT"
+      events:
+        - name: "rows.fetched"
+          attributes:
+            row.count: 10
+
+logs:
+  enabled: true
+  entries:
+    - level: "INFO"
+      body: "Query completed successfully"
+      attributes:
+        query_id: "q-local-1"
+        rows_returned: 42
+
+metrics:
+  enabled: true
+  export_interval_ms: 5000
+  verify_after_seconds: 6
+  counters:
+    - name: "http.server.request_count"
+      description: "Total HTTP requests"
+      unit: "requests"
+      adds:
+        - value: 1
+          attributes:
+            http.method: "GET"
+            http.route: "/api/v1/queries"
+        - value: 1
+          attributes:
+            http.method: "POST"
+            http.route: "/api/v1/analysis"
+  histograms:
+    - name: "http.server.duration"
+      description: "HTTP request duration"
+      unit: "ms"
+      records:
+        - value: 45.3
+          attributes:
+            http.method: "GET"
+            http.route: "/api/v1/queries"
+        - value: 230.7
+          attributes:
+            http.method: "POST"
+            http.route: "/api/v1/analysis"

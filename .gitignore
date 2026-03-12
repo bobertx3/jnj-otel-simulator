@@ -1,0 +1,54 @@
+# macOS
+.DS_Store
+
+# Local AI/dev tooling metadata
+.ai-dev-kit/
+.claude/
+.cursor/
+.mcp.json
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python virtual environments
+.venv/
+.venv_local/
+venv/
+env/
+
+# Python caches and build artifacts
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Frontend/common JS artifacts (if added later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+.next/
+.nuxt/
+.svelte-kit/
+*.tsbuildinfo
