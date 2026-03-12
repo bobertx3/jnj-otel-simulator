@@ -2,10 +2,10 @@
 .DS_Store
 
 # Local AI/dev tooling metadata
-.ai-dev-kit/
-.claude/
-.cursor/
-.mcp.json
+# .ai-dev-kit/
+# .claude/
+# .cursor/
+# .mcp.json
 
 # Environment and secrets
 .env
