@@ -146,6 +146,21 @@ def _emit_for_event(domain: Domain, event_key: str, event_label: str) -> tuple[d
         event=event_key,
         extra={"route": base_route, "label": event_label, **common_attrs},
     )
+    # Simulate enterprise-style latency and error metrics by event type.
+    latency_ms = 140.0
+    if domain == Domain.applications:
+        latency_ms = 2200.0 if event_key == "slow_response" else 420.0 if error_event else 180.0
+    elif domain == Domain.networking:
+        latency_ms = 360.0 if error_event else 210.0
+    elif domain == Domain.infrastructure:
+        latency_ms = 280.0 if event_key == "node_resource_pressure" else 170.0
+
+    emitter.emit_metrics(
+        domain=domain.value,
+        route=base_route,
+        latency_ms=latency_ms,
+        error=error_event,
+    )
     emitter.flush()
 
     telemetry_summary = {
@@ -166,7 +181,7 @@ def _emit_for_event(domain: Domain, event_key: str, event_label: str) -> tuple[d
         "event_label": event_label,
         "severity": severity,
         "source_component": source_component,
-        "signal_types": ["trace", "log"],
+        "signal_types": ["trace", "log", "metric"],
         "resource": {
             "service.name": cfg.service_name,
             "deployment.environment": "local-simulator",

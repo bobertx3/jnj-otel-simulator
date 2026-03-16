@@ -55,8 +55,9 @@ function renderEventLog() {
     `;
     const line1 = li.querySelector(".line1");
     line1.appendChild(makeChip(item.severity, item.severity === "WARN"));
-    line1.appendChild(makeChip("trace"));
-    line1.appendChild(makeChip("log"));
+    (item.signal_types || []).forEach((signal) => {
+      line1.appendChild(makeChip(signal));
+    });
     li.addEventListener("click", () => openModal(idx));
     eventLogEl.appendChild(li);
   });
@@ -70,7 +71,9 @@ function openModal(index) {
   modalTimeEl.textContent = item.timestamp;
   modalChipsEl.innerHTML = "";
   modalChipsEl.appendChild(makeChip(item.severity, item.severity === "WARN"));
-  modalChipsEl.appendChild(makeChip("trace"));
+  (item.signal_types || []).forEach((signal) => {
+    modalChipsEl.appendChild(makeChip(signal));
+  });
   modalChipsEl.appendChild(makeChip(item.domain));
 
   impactSourceEl.textContent = item.source_component;

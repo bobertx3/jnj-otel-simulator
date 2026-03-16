@@ -97,9 +97,6 @@ class OTelEmitter:
         )
         self.meter = self.meter_provider.get_meter(cfg.service_name)
 
-        self.request_counter = self.meter.create_counter(
-            "app.request_count", description="Total simulated app requests", unit="requests"
-        )
         self.error_counter = self.meter.create_counter(
             "app.error_count", description="Total simulated errors", unit="errors"
         )
@@ -107,14 +104,6 @@ class OTelEmitter:
             "app.request_latency_ms",
             description="Simulated request latency",
             unit="ms",
-        )
-        self.network_hist = self.meter.create_histogram(
-            "network.latency_ms", description="Simulated network latency", unit="ms"
-        )
-        self.infra_hist = self.meter.create_histogram(
-            "infra.cpu_pressure_pct",
-            description="Simulated infrastructure pressure",
-            unit="percent",
         )
 
     def _headers(self, table_name: str) -> dict[str, str]:
@@ -165,18 +154,11 @@ class OTelEmitter:
         route: str,
         latency_ms: float,
         error: bool = False,
-        network_latency_ms: float | None = None,
-        infra_pressure_pct: float | None = None,
     ) -> None:
         attrs = {"domain": domain, "route": route}
-        self.request_counter.add(1, attrs)
         self.latency_hist.record(latency_ms, attrs)
         if error:
             self.error_counter.add(1, attrs)
-        if network_latency_ms is not None:
-            self.network_hist.record(network_latency_ms, {"domain": domain})
-        if infra_pressure_pct is not None:
-            self.infra_hist.record(infra_pressure_pct, {"domain": domain})
 
     def flush(self) -> None:
         self.tracer_provider.force_flush(timeout_millis=10000)
