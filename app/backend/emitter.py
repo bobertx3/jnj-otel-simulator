@@ -89,8 +89,10 @@ class OTelEmitter:
         metric_exporter = OTLPMetricExporter(
             endpoint=self.metrics_endpoint, headers=self._headers(cfg.metrics_table)
         )
+        # Keep periodic export effectively disabled; metrics are exported on interaction
+        # when flush() is called from the simulator emit endpoint.
         self.metric_reader = PeriodicExportingMetricReader(
-            metric_exporter, export_interval_millis=3000
+            metric_exporter, export_interval_millis=86_400_000
         )
         self.meter_provider = MeterProvider(
             resource=resource, metric_readers=[self.metric_reader]
@@ -163,5 +165,6 @@ class OTelEmitter:
     def flush(self) -> None:
         self.tracer_provider.force_flush(timeout_millis=10000)
         self.logger_provider.force_flush(timeout_millis=10000)
+        self.metric_reader.collect(timeout_millis=10000)
         self.meter_provider.force_flush(timeout_millis=10000)
 
