@@ -107,6 +107,24 @@ class OTelEmitter:
             description="Simulated request latency",
             unit="ms",
         )
+        self.incident_counter = self.meter.create_counter(
+            "app.incident.count", description="Total incidents", unit="incidents"
+        )
+        self.mttr_hist = self.meter.create_histogram(
+            "app.incident.mttr_minutes",
+            description="Mean time to resolve",
+            unit="min",
+        )
+        self.revenue_hist = self.meter.create_histogram(
+            "app.incident.revenue_impact_usd",
+            description="Revenue impact per incident",
+            unit="USD",
+        )
+        self.users_hist = self.meter.create_histogram(
+            "app.incident.users_affected",
+            description="Users affected per incident",
+            unit="users",
+        )
 
     def _headers(self, table_name: str) -> dict[str, str]:
         return {
@@ -161,6 +179,50 @@ class OTelEmitter:
         self.latency_hist.record(latency_ms, attrs)
         if error:
             self.error_counter.add(1, attrs)
+
+    def emit_incident_trace(
+        self,
+        *,
+        domain: str,
+        event: str,
+        label: str,
+        attributes: dict[str, object],
+        incident_attrs: dict[str, object],
+        child_name: str | None = None,
+    ) -> None:
+        merged = {**attributes, **incident_attrs}
+        self.emit_trace(
+            domain=domain,
+            event=event,
+            label=label,
+            attributes=merged,
+            child_name=child_name,
+        )
+
+    def emit_incident_metrics(
+        self,
+        *,
+        domain: str,
+        severity: str,
+        priority: str,
+        service_name: str,
+        mttr_minutes: float,
+        revenue_impact_usd: float,
+        users_affected: int,
+    ) -> None:
+        attrs = {
+            "app.domain": domain,
+            "app.incident.severity": severity,
+            "app.incident.priority": priority,
+            "service.name": service_name,
+        }
+        self.incident_counter.add(1, attrs)
+        if mttr_minutes > 0:
+            self.mttr_hist.record(mttr_minutes, attrs)
+        if revenue_impact_usd > 0:
+            self.revenue_hist.record(revenue_impact_usd, attrs)
+        if users_affected > 0:
+            self.users_hist.record(float(users_affected), attrs)
 
     def flush(self) -> None:
         self.tracer_provider.force_flush(timeout_millis=10000)

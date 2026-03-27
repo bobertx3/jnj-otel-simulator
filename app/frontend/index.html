@@ -4,47 +4,95 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Telemetry Simulator</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=4" />
   </head>
   <body>
-    <header class="topbar">
-      <div>
-        <h1>Telemetry Simulator</h1>
-        <p>Trace + Log event simulator with raw payload inspection</p>
+    <div class="app-container">
+
+      <!-- Header -->
+      <header class="topbar">
+        <div>
+          <h1>Telemetry Simulator</h1>
+          <p>Data Center OTel Simulator — Traces, Logs, Metrics to Databricks</p>
+        </div>
+        <div class="topbar-right">
+          <div class="status-pill" id="health-pill">Checking API...</div>
+        </div>
+      </header>
+
+      <!-- Stats bar -->
+      <div class="stats-bar" id="stats-bar">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Events Sent</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-rps">0</div>
+          <div class="stat-label">Events / sec</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-incidents">0</div>
+          <div class="stat-label">Incidents</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-connection">
+            <span class="conn-dot idle"></span> Manual
+          </div>
+          <div class="stat-label">Mode</div>
+        </div>
       </div>
-      <div class="status-pill" id="health-pill">Checking API...</div>
-    </header>
 
-    <main class="layout">
-      <section class="event-grid">
-        <article class="domain-card infra">
-          <h2>Infrastructure</h2>
-          <p>Kubernetes cluster telemetry</p>
-          <div class="button-list" id="infrastructure-buttons"></div>
-        </article>
+      <!-- Mode & controls bar -->
+      <div class="controls-bar">
+        <div class="controls-left">
+          <nav class="main-tabs">
+            <button type="button" class="main-tab active" data-tab="datacenter">Data Center</button>
+            <button type="button" class="main-tab" data-tab="settings">Settings</button>
+          </nav>
+        </div>
+        <div class="controls-right">
+          <div class="mode-toggle">
+            <button type="button" class="mode-btn active" id="btn-manual">Manual</button>
+            <button type="button" class="mode-btn" id="btn-streaming">Streaming</button>
+          </div>
+          <div class="streaming-controls hidden" id="streaming-controls">
+            <button type="button" class="control-btn start-btn" id="btn-start-stream">Start</button>
+            <button type="button" class="control-btn stop-btn hidden" id="btn-stop-stream">Stop</button>
+            <label class="speed-label">
+              <input type="range" id="stream-speed" min="200" max="5000" step="100" value="500">
+              <span id="stream-speed-value">500ms</span>
+            </label>
+          </div>
+        </div>
+      </div>
 
-        <article class="domain-card network">
-          <h2>Networking</h2>
-          <p>VPC flow logs and network events</p>
-          <div class="button-list" id="networking-buttons"></div>
-        </article>
+      <!-- Data Center tab -->
+      <div id="tab-datacenter" class="tab-content active">
+        <div id="datacenter-container" class="datacenter-container"></div>
+      </div>
 
-        <article class="domain-card app">
-          <h2>Applications</h2>
-          <p>API traces and service logs</p>
-          <div class="button-list" id="applications-buttons"></div>
-        </article>
+      <!-- Settings tab -->
+      <div id="tab-settings" class="tab-content">
+        <div id="settings-container"></div>
+      </div>
+
+      <!-- Event Stream (bottom of page) -->
+      <section class="event-stream-section">
+        <div class="stream-header">
+          <h3>Event Stream</h3>
+          <span class="event-count" id="event-count">0 events</span>
+          <button id="clear-log" type="button" class="clear-btn">Clear</button>
+        </div>
+        <div class="event-stream-container" id="event-stream">
+          <div class="stream-empty" id="stream-empty">
+            Click a hotspot or start streaming to see events here
+          </div>
+        </div>
       </section>
 
-      <aside class="event-panel">
-        <div class="panel-head">
-          <h3>Event Log</h3>
-          <button id="clear-log" type="button">Clear</button>
-        </div>
-        <ul id="event-log"></ul>
-      </aside>
-    </main>
+    </div>
 
+    <!-- Modal -->
     <section id="event-modal" class="modal hidden" aria-hidden="true">
       <div class="modal-card">
         <button type="button" id="close-modal" class="close-btn">x</button>
@@ -58,28 +106,26 @@
         </div>
 
         <div id="panel-impact" class="detail-panel active">
-          <div class="kv">
-            <span>Source</span>
-            <code id="impact-source"></code>
-          </div>
-          <div class="kv">
-            <span>Correlation ID</span>
-            <code id="impact-correlation"></code>
-          </div>
-          <div class="kv">
-            <span>Trace ID</span>
-            <code id="impact-trace"></code>
-          </div>
-          <div class="kv">
-            <span>Signals</span>
-            <code id="impact-signals"></code>
-          </div>
+          <div class="kv"><span>Incident</span><code id="impact-incident"></code></div>
+          <div class="kv"><span>Scenario</span><code id="impact-scenario"></code></div>
+          <div class="kv"><span>Severity / Priority</span><code id="impact-severity"></code></div>
+          <div class="kv"><span>Root Cause</span><code id="impact-root-cause"></code></div>
+          <div class="kv"><span>Blast Radius</span><code id="impact-blast"></code></div>
+          <div class="kv"><span>Users Affected</span><code id="impact-users"></code></div>
+          <div class="kv"><span>Revenue Impact</span><code id="impact-revenue"></code></div>
+          <div class="kv"><span>MTTR</span><code id="impact-mttr"></code></div>
+          <div class="kv"><span>SLA Breach</span><code id="impact-sla"></code></div>
+          <div class="kv"><span>ServiceNow Tickets</span><code id="impact-snow"></code></div>
+          <div class="kv"><span>Events</span><code id="impact-events"></code></div>
         </div>
 
         <pre id="panel-raw" class="detail-panel"></pre>
       </div>
     </section>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/datacenter.js?v=4"></script>
+    <script src="/static/streaming.js?v=4"></script>
+    <script src="/static/settings.js?v=4"></script>
+    <script src="/static/app.js?v=4"></script>
   </body>
 </html>

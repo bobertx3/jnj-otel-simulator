@@ -37,6 +37,78 @@ class EmitResponse(BaseModel):
     raw_telemetry: dict[str, Any]
 
 
+class Severity(str, Enum):
+    normal = "normal"
+    warning = "warning"
+    critical = "critical"
+
+
+class Priority(str, Enum):
+    P1 = "P1"
+    P2 = "P2"
+    P3 = "P3"
+    P4 = "P4"
+
+
+class StreamingConfig(BaseModel):
+    interval_ms: int = 2000
+    blast_radius: int = 2
+    severity_weights: dict[str, float] = Field(
+        default_factory=lambda: {"normal": 0.75, "warning": 0.15, "critical": 0.10}
+    )
+    active_triplet_ids: list[str] = Field(default_factory=list)
+
+
+class ComponentResponse(BaseModel):
+    id: str
+    label: str
+    domain: Domain
+    component_type: str
+    x: float
+    y: float
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TripletResponse(BaseModel):
+    id: str
+    label: str
+    application: ComponentResponse
+    infrastructure: ComponentResponse
+    network: ComponentResponse
+
+
+class IncidentEvent(BaseModel):
+    domain: Domain
+    event_key: str
+    event_label: str
+    component_id: str
+    severity: str
+    trace_id: str
+    correlation_id: str
+
+
+class EmitRandomResponse(BaseModel):
+    status: str = "ok"
+    scenario_id: str
+    scenario_label: str
+    triplet_id: str
+    severity: str
+    priority: str
+    incident_id: str
+    blast_radius: int
+    sla_breach: bool
+    users_affected: int
+    revenue_impact_usd: float
+    mttr_minutes: float
+    root_cause: str
+    servicenow_tickets: int
+    duplicate_ticket_pct: float
+    events: list[IncidentEvent]
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+
 class GenieAskRequest(BaseModel):
     question: str
     conversation_id: str | None = None
