@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Telemetry Simulator</title>
-    <link rel="stylesheet" href="/static/styles.css?v=13" />
+    <link rel="stylesheet" href="/static/styles.css?v=15" />
   </head>
   <body>
     <div class="app-container">
@@ -83,6 +83,7 @@
         <div class="stream-header">
           <h3>Event Stream</h3>
           <span class="event-count" id="event-count">0 events</span>
+          <button id="btn-legend" type="button" class="legend-btn">Legend</button>
           <button id="clear-log" type="button" class="clear-btn">Clear</button>
         </div>
         <div class="event-stream-container" id="event-stream">
@@ -107,13 +108,20 @@
         </div>
 
         <div class="dataflow-pipeline">
-          <!-- Box 1: Domains -->
-          <div class="df-stage" id="df-stage-domains" data-stage="domains">
+          <!-- Box 1: Telemetry Sources -->
+          <div class="df-stage df-stage-blue" id="df-stage-domains" data-stage="domains">
+            <div class="df-stage-number">1</div>
             <div class="df-stage-header">
-              <span class="df-stage-icon">&#9881;</span>
-              <span class="df-stage-label">Domains</span>
+              <span class="df-stage-icon">&#128225;</span>
+              <span class="df-stage-label">Telemetry Sources</span>
             </div>
-            <div class="df-stage-summary">3 signal sources</div>
+            <div class="df-stage-subtitle">Applications &amp; Infrastructure</div>
+            <ul class="df-value-points">
+              <li><span class="df-vp-dot blue"></span>OpenTelemetry SDK</li>
+              <li><span class="df-vp-dot blue"></span>Fluent Bit Agents</li>
+              <li><span class="df-vp-dot blue"></span>StatsD / Prometheus</li>
+              <li><span class="df-vp-dot blue"></span>Custom Instrumentation</li>
+            </ul>
             <div class="df-stage-expand" id="df-expand-domains">
               <div class="df-sub-item infra-accent">
                 <span class="df-sub-dot" style="background:var(--infra)"></span>
@@ -150,30 +158,37 @@
             <div class="df-pipe-label">OTLP/HTTP</div>
           </div>
 
-          <!-- Box 2: Zerobus OTel Endpoints -->
-          <div class="df-stage" id="df-stage-endpoints" data-stage="endpoints">
+          <!-- Box 2: Zerobus Ingest -->
+          <div class="df-stage df-stage-orange" id="df-stage-endpoints" data-stage="endpoints">
+            <div class="df-stage-number orange">2</div>
             <div class="df-stage-header">
-              <span class="df-stage-icon">&#128225;</span>
-              <span class="df-stage-label">Zerobus OTel</span>
+              <span class="df-stage-icon">&#9889;</span>
+              <span class="df-stage-label">Zerobus Ingest</span>
             </div>
-            <div class="df-stage-summary">3 OTLP endpoints</div>
+            <div class="df-stage-subtitle">High-throughput ingestion</div>
+            <ul class="df-value-points">
+              <li><span class="df-vp-dot orange"></span>Schema validation</li>
+              <li><span class="df-vp-dot orange"></span>Routing &amp; enrichment</li>
+              <li><span class="df-vp-dot orange"></span>Back-pressure handling</li>
+              <li><span class="df-vp-dot orange"></span>Multi-tenant isolation</li>
+            </ul>
             <div class="df-stage-expand" id="df-expand-endpoints">
               <div class="df-sub-item">
-                <span class="df-sub-dot" style="background:#8ab4f0"></span>
+                <span class="df-sub-dot" style="background:#f59e42"></span>
                 <div>
                   <div class="df-sub-label">Traces</div>
                   <div class="df-sub-url">/api/2.0/tracing/otel/v1/traces</div>
                 </div>
               </div>
               <div class="df-sub-item">
-                <span class="df-sub-dot" style="background:#8ab4f0"></span>
+                <span class="df-sub-dot" style="background:#f59e42"></span>
                 <div>
                   <div class="df-sub-label">Logs</div>
                   <div class="df-sub-url">/api/2.0/tracing/otel/v1/logs</div>
                 </div>
               </div>
               <div class="df-sub-item">
-                <span class="df-sub-dot" style="background:#8ab4f0"></span>
+                <span class="df-sub-dot" style="background:#f59e42"></span>
                 <div>
                   <div class="df-sub-label">Metrics</div>
                   <div class="df-sub-url">/api/2.0/otel/v1/metrics</div>
@@ -198,12 +213,19 @@
           </div>
 
           <!-- Box 3: Unity Catalog -->
-          <div class="df-stage" id="df-stage-delta" data-stage="delta">
+          <div class="df-stage df-stage-green" id="df-stage-delta" data-stage="delta">
+            <div class="df-stage-number green">3</div>
             <div class="df-stage-header">
               <span class="df-stage-icon">&#9651;</span>
               <span class="df-stage-label">Unity Catalog</span>
             </div>
-            <div class="df-stage-summary">3 Delta tables</div>
+            <div class="df-stage-subtitle">Governed Delta Lake storage</div>
+            <ul class="df-value-points">
+              <li><span class="df-vp-dot green"></span>ACID transactions</li>
+              <li><span class="df-vp-dot green"></span>Fine-grained access control</li>
+              <li><span class="df-vp-dot green"></span>Schema evolution</li>
+              <li><span class="df-vp-dot green"></span>Cross-workspace sharing</li>
+            </ul>
             <div class="df-stage-expand" id="df-expand-delta">
               <div class="df-sub-item">
                 <span class="df-sub-dot" style="background:var(--normal-color)"></span>
@@ -262,6 +284,66 @@
       </div>
     </section>
 
+    <!-- Legend Modal -->
+    <section id="legend-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card legend-card">
+        <button type="button" id="close-legend" class="close-btn">x</button>
+        <h2 style="margin:0 0 12px">Event Stream Legend</h2>
+
+        <div class="legend-section">
+          <h3>Priority Levels</h3>
+          <div class="legend-row">
+            <span class="ev-tag priority" style="min-width:28px;text-align:center">P1</span>
+            <div><strong>Critical</strong> — Full outage, major revenue impact, SLA breach<br><span class="legend-example">e.g., "Payment Gateway Down"</span></div>
+          </div>
+          <div class="legend-row">
+            <span class="ev-tag priority" style="min-width:28px;text-align:center">P2</span>
+            <div><strong>High</strong> — Significant degradation, large user impact<br><span class="legend-example">e.g., "SAP Batch Queue Delay"</span></div>
+          </div>
+          <div class="legend-row">
+            <span class="ev-tag priority" style="min-width:28px;text-align:center">P3</span>
+            <div><strong>Medium</strong> — Partial issues, moderate impact<br><span class="legend-example">e.g., "Order API Slow Response"</span></div>
+          </div>
+          <div class="legend-row">
+            <span class="ev-tag priority" style="min-width:28px;text-align:center">P4</span>
+            <div><strong>Low</strong> — Normal operations, no impact<br><span class="legend-example">e.g., "Order API Request" — healthy baseline</span></div>
+          </div>
+        </div>
+
+        <div class="legend-section">
+          <h3>Severity Indicators</h3>
+          <div class="legend-row">
+            <span class="ev-level-dot normal"></span>
+            <div><strong>Normal</strong> — Healthy baseline traffic, no action needed</div>
+          </div>
+          <div class="legend-row">
+            <span class="ev-level-dot warn"></span>
+            <div><strong>Warning</strong> — Degraded performance, fires app + infra layer events</div>
+          </div>
+          <div class="legend-row">
+            <span class="ev-level-dot critical"></span>
+            <div><strong>Critical</strong> — Full cascade across all 3 layers (app → infra → network)</div>
+          </div>
+        </div>
+
+        <div class="legend-section">
+          <h3>SLA Badge</h3>
+          <div class="legend-row">
+            <span class="ev-tag sla">SLA</span>
+            <div><strong>SLA Breach</strong> — Incident violates Service Level Agreement thresholds (e.g., 99.9% uptime, MTTR under 60 min). Only critical P1 scenarios trigger SLA breaches. Counts toward the "SLA Breaches" KPI on the executive dashboard.</div>
+          </div>
+        </div>
+
+        <div class="legend-section">
+          <h3>Triplet Tags</h3>
+          <div class="legend-row">
+            <span class="ev-tag triplet">order-mgmt-chain</span>
+            <div>Shows which application triplet (App → Infra → Network chain) the event belongs to. Each triplet maps one application to its infrastructure pod and network subnet.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Event Detail Modal -->
     <section id="event-modal" class="modal hidden" aria-hidden="true">
       <div class="modal-card">
@@ -293,9 +375,9 @@
       </div>
     </section>
 
-    <script src="/static/datacenter.js?v=13"></script>
-    <script src="/static/streaming.js?v=13"></script>
-    <script src="/static/settings.js?v=13"></script>
-    <script src="/static/app.js?v=13"></script>
+    <script src="/static/datacenter.js?v=15"></script>
+    <script src="/static/streaming.js?v=15"></script>
+    <script src="/static/settings.js?v=15"></script>
+    <script src="/static/app.js?v=15"></script>
   </body>
 </html>

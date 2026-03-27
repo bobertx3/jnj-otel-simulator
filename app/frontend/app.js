@@ -361,6 +361,27 @@ async function loadDataflowInfo() {
   } catch (_) {}
 }
 
+// ---- Legend Modal ----
+
+const legendModal = document.getElementById("legend-modal");
+const btnLegend = document.getElementById("btn-legend");
+const closeLegend = document.getElementById("close-legend");
+
+btnLegend.addEventListener("click", () => {
+  legendModal.classList.remove("hidden");
+  legendModal.setAttribute("aria-hidden", "false");
+});
+closeLegend.addEventListener("click", () => {
+  legendModal.classList.add("hidden");
+  legendModal.setAttribute("aria-hidden", "true");
+});
+legendModal.addEventListener("click", (e) => {
+  if (e.target === legendModal) {
+    legendModal.classList.add("hidden");
+    legendModal.setAttribute("aria-hidden", "true");
+  }
+});
+
 // ---- Refresh Demo Modal ----
 
 const refreshModal = document.getElementById("refresh-modal");
