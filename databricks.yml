@@ -1,0 +1,62 @@
+bundle:
+  name: jnj-otel-simulator
+
+workspace:
+  root_path: /Workspace/Users/${workspace.current_user.userName}/otel-simulator
+
+resources:
+  apps:
+    otel-simulator:
+      name: otel-simulator
+      description: "OTel Telemetry Simulator - emits traces, logs, and metrics to Databricks"
+      source_code_path: ./app
+      resources:
+        - name: sql-warehouse
+          description: "SQL warehouse for summary queries"
+          sql_warehouse:
+            id: "862f1d757f0424f7"
+            permission: CAN_USE
+      user_api_scopes:
+        - sql
+        - serving.serving-endpoints
+      config:
+        command:
+          - uvicorn
+          - backend.server:app
+          - --host
+          - "0.0.0.0"
+          - --port
+          - "8000"
+        env:
+          - name: DATABRICKS_HOST
+            value: "https://e2-demo-field-eng.cloud.databricks.com"
+          - name: DATABRICKS_CATALOG
+            value: "bx3"
+          - name: DATABRICKS_SCHEMA
+            value: "otel_demo"
+          - name: OTEL_SERVICE_NAME
+            value: "otel-simulator-app"
+          - name: OTEL_SPANS_TABLE
+            value: "bx3.otel_demo.otel_spans_v2"
+          - name: OTEL_LOGS_TABLE
+            value: "bx3.otel_demo.otel_logs_v2"
+          - name: OTEL_METRICS_TABLE
+            value: "bx3.otel_demo.otel_metrics"
+          - name: DATABRICKS_WAREHOUSE_ID
+            value: "862f1d757f0424f7"
+          - name: GENIE_SPACE_ID
+            value: "01f11cbdc1b21b06b17d10fa4f58a5f1"
+
+sync:
+  include:
+    - app/**
+    - notebooks/**
+    - config/**
+    - requirements.txt
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      profile: aws-west

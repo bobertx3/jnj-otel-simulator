@@ -19,10 +19,11 @@ from databricks import sql
 from .emitter import EmitterConfig, OTelEmitter
 from .models import Domain, EmitResponse, EventDefinition, GenieAskRequest, GenieAskResponse
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-FRONTEND_DIR = ROOT_DIR / "app" / "frontend"
+BACKEND_DIR = Path(__file__).resolve().parent
+APP_DIR = BACKEND_DIR.parent
+FRONTEND_DIR = APP_DIR / "frontend"
 
-load_dotenv(ROOT_DIR / ".env")
+load_dotenv(APP_DIR.parent / ".env")
 cfg = EmitterConfig.from_env()
 emitter = OTelEmitter(cfg)
 GENIE_SPACE_ID = os.getenv("GENIE_SPACE_ID", "01f11cbdc1b21b06b17d10fa4f58a5f1")

@@ -31,7 +31,6 @@ class EmitterConfig:
     def from_env(cls) -> "EmitterConfig":
         required = [
             "DATABRICKS_HOST",
-            "DATABRICKS_TOKEN",
             "OTEL_SERVICE_NAME",
             "OTEL_SPANS_TABLE",
             "OTEL_LOGS_TABLE",
@@ -41,9 +40,18 @@ class EmitterConfig:
         if missing:
             raise ValueError(f"Missing required .env keys: {', '.join(missing)}")
 
+        # Use explicit token if set, otherwise get from Databricks SDK
+        # (works in Databricks Apps via service principal OAuth)
+        token = os.getenv("DATABRICKS_TOKEN", "").strip()
+        if not token:
+            from databricks.sdk import WorkspaceClient
+            w = WorkspaceClient()
+            auth_headers = w.config.authenticate()
+            token = auth_headers.get("Authorization", "").replace("Bearer ", "")
+
         return cls(
             databricks_host=os.environ["DATABRICKS_HOST"].rstrip("/"),
-            databricks_token=os.environ["DATABRICKS_TOKEN"],
+            databricks_token=token,
             service_name=os.environ["OTEL_SERVICE_NAME"],
             spans_table=os.environ["OTEL_SPANS_TABLE"],
             logs_table=os.environ["OTEL_LOGS_TABLE"],
