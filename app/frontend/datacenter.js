@@ -62,6 +62,8 @@ function createFallbackSVG() {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "0 0 1000 600");
   svg.setAttribute("class", "dc-image dc-fallback-svg");
+  // SVG viewBox 1000x600. No text labels inside boxes — hotspot labels provide all names.
+  svg.setAttribute("viewBox", "0 0 1000 600");
   svg.innerHTML = `
     <defs>
       <linearGradient id="rack-grad" x1="0" y1="0" x2="0" y2="1">
@@ -73,94 +75,79 @@ function createFallbackSVG() {
         <stop offset="100%" stop-color="#060d1d"/>
       </linearGradient>
     </defs>
-    <!-- Floor -->
     <rect width="1000" height="600" fill="url(#floor-grad)" rx="8"/>
-    <!-- Grid lines -->
-    <g stroke="#152040" stroke-width="0.5" opacity="0.4">
-      ${Array.from({length: 20}, (_, i) => `<line x1="${i * 50}" y1="0" x2="${i * 50}" y2="600"/>`).join("")}
-      ${Array.from({length: 12}, (_, i) => `<line x1="0" y1="${i * 50}" x2="1000" y2="${i * 50}"/>`).join("")}
+    <g stroke="#152040" stroke-width="0.5" opacity="0.3">
+      ${Array.from({length: 21}, (_, i) => `<line x1="${i * 50}" y1="0" x2="${i * 50}" y2="600"/>`).join("")}
+      ${Array.from({length: 13}, (_, i) => `<line x1="0" y1="${i * 50}" x2="1000" y2="${i * 50}"/>`).join("")}
     </g>
+
     <!-- Zone labels -->
-    <text x="110" y="45" fill="#ffb566" font-size="14" font-weight="600" opacity="0.8">COMPUTE RACKS</text>
-    <text x="430" y="45" fill="#be85ff" font-size="14" font-weight="600" opacity="0.8">NETWORK CORE</text>
-    <text x="730" y="45" fill="#35d6ff" font-size="14" font-weight="600" opacity="0.8">APP SERVICES</text>
-    <!-- Infrastructure racks (left) -->
+    <text x="155" y="38" fill="#ffb566" font-size="13" font-weight="600" opacity="0.7" text-anchor="middle">COMPUTE RACKS</text>
+    <text x="500" y="38" fill="#be85ff" font-size="13" font-weight="600" opacity="0.7" text-anchor="middle">NETWORK CORE</text>
+    <text x="845" y="38" fill="#35d6ff" font-size="13" font-weight="600" opacity="0.7" text-anchor="middle">APP SERVICES</text>
+
+    <!-- INFRASTRUCTURE RACKS (left) -->
+    <!-- Rack A (3 pods stacked): y=55..195 -->
     <g>
-      <rect x="30" y="70" width="180" height="90" rx="6" fill="url(#rack-grad)" stroke="#2a3b63" stroke-width="1"/>
-      <rect x="40" y="80" width="160" height="12" rx="2" fill="#1e3050"/>
-      <rect x="40" y="96" width="160" height="12" rx="2" fill="#1e3050"/>
-      <rect x="40" y="112" width="160" height="12" rx="2" fill="#1e3050"/>
-      <rect x="40" y="128" width="160" height="12" rx="2" fill="#1e3050"/>
-      <rect x="40" y="144" width="60" height="8" rx="2" fill="#253658"/>
-      <text x="120" y="155" fill="#4a5a80" font-size="8" text-anchor="middle">RACK A</text>
+      <rect x="30" y="55" width="250" height="140" rx="6" fill="url(#rack-grad)" stroke="#2a3b63"/>
+      <rect x="42" y="68" width="226" height="8" rx="2" fill="#1e3050"/>
+      <rect x="42" y="100" width="226" height="8" rx="2" fill="#1e3050"/>
+      <rect x="42" y="132" width="226" height="8" rx="2" fill="#1e3050"/>
+      <rect x="42" y="164" width="226" height="8" rx="2" fill="#1e3050"/>
+      <text x="155" y="190" fill="#4a5a80" font-size="8" text-anchor="middle">RACK A — cluster-a</text>
+    </g>
+    <!-- Rack B (2 pods): y=215..340 -->
+    <g>
+      <rect x="30" y="215" width="250" height="125" rx="6" fill="url(#rack-grad)" stroke="#2a3b63"/>
+      <rect x="42" y="228" width="226" height="8" rx="2" fill="#1e3050"/>
+      <rect x="42" y="258" width="226" height="8" rx="2" fill="#1e3050"/>
+      <rect x="42" y="288" width="226" height="8" rx="2" fill="#1e3050"/>
+      <rect x="42" y="318" width="226" height="8" rx="2" fill="#1e3050"/>
+      <text x="155" y="336" fill="#4a5a80" font-size="8" text-anchor="middle">RACK B — cluster-b</text>
+    </g>
+    <!-- Rack C (1 pod): y=365..460 -->
+    <g>
+      <rect x="30" y="365" width="250" height="95" rx="6" fill="url(#rack-grad)" stroke="#2a3b63"/>
+      <rect x="42" y="378" width="226" height="8" rx="2" fill="#1e3050"/>
+      <rect x="42" y="398" width="226" height="8" rx="2" fill="#1e3050"/>
+      <rect x="42" y="418" width="226" height="8" rx="2" fill="#1e3050"/>
+      <rect x="42" y="438" width="226" height="8" rx="2" fill="#1e3050"/>
+      <text x="155" y="456" fill="#4a5a80" font-size="8" text-anchor="middle">RACK C — cluster-c</text>
+    </g>
+
+    <!-- NETWORK CORE (center) -->
+    <g>
+      <rect x="370" y="170" width="260" height="70" rx="8" fill="url(#rack-grad)" stroke="#4a3a78"/>
     </g>
     <g>
-      <rect x="30" y="180" width="180" height="90" rx="6" fill="url(#rack-grad)" stroke="#2a3b63" stroke-width="1"/>
-      <rect x="40" y="190" width="160" height="12" rx="2" fill="#1e3050"/>
-      <rect x="40" y="206" width="160" height="12" rx="2" fill="#1e3050"/>
-      <rect x="40" y="222" width="160" height="12" rx="2" fill="#1e3050"/>
-      <rect x="40" y="238" width="160" height="12" rx="2" fill="#1e3050"/>
-      <text x="120" y="265" fill="#4a5a80" font-size="8" text-anchor="middle">RACK B</text>
+      <rect x="345" y="340" width="150" height="50" rx="6" fill="url(#rack-grad)" stroke="#3a3068"/>
     </g>
     <g>
-      <rect x="30" y="290" width="180" height="90" rx="6" fill="url(#rack-grad)" stroke="#2a3b63" stroke-width="1"/>
-      <rect x="40" y="300" width="160" height="12" rx="2" fill="#1e3050"/>
-      <rect x="40" y="316" width="160" height="12" rx="2" fill="#1e3050"/>
-      <rect x="40" y="332" width="160" height="12" rx="2" fill="#1e3050"/>
-      <rect x="40" y="348" width="160" height="12" rx="2" fill="#1e3050"/>
-      <text x="120" y="375" fill="#4a5a80" font-size="8" text-anchor="middle">RACK C</text>
-    </g>
-    <!-- Network core (center) -->
-    <g>
-      <rect x="370" y="200" width="260" height="80" rx="8" fill="url(#rack-grad)" stroke="#4a3a78" stroke-width="1"/>
-      <text x="500" y="245" fill="#be85ff" font-size="12" text-anchor="middle" opacity="0.7">CORE SWITCH</text>
-    </g>
-    <!-- Network subnets (bottom) -->
-    <g>
-      <rect x="280" y="400" width="140" height="50" rx="6" fill="url(#rack-grad)" stroke="#3a3068" stroke-width="1"/>
-      <text x="350" y="430" fill="#9070c0" font-size="10" text-anchor="middle">Subnet 10.0.1.0/24</text>
+      <rect x="510" y="340" width="150" height="50" rx="6" fill="url(#rack-grad)" stroke="#3a3068"/>
     </g>
     <g>
-      <rect x="430" y="400" width="140" height="50" rx="6" fill="url(#rack-grad)" stroke="#3a3068" stroke-width="1"/>
-      <text x="500" y="430" fill="#9070c0" font-size="10" text-anchor="middle">Subnet 10.0.2.0/24</text>
+      <rect x="425" y="440" width="150" height="50" rx="6" fill="url(#rack-grad)" stroke="#3a3068"/>
     </g>
-    <g>
-      <rect x="580" y="400" width="140" height="50" rx="6" fill="url(#rack-grad)" stroke="#3a3068" stroke-width="1"/>
-      <text x="650" y="430" fill="#9070c0" font-size="10" text-anchor="middle">Subnet 10.0.3.0/24</text>
-    </g>
-    <!-- App services (right) -->
-    <g>
-      <rect x="770" y="70" width="200" height="55" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a" stroke-width="1"/>
-      <text x="870" y="102" fill="#35d6ff" font-size="10" text-anchor="middle" opacity="0.7">Order Mgmt API</text>
-    </g>
-    <g>
-      <rect x="770" y="140" width="200" height="55" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a" stroke-width="1"/>
-      <text x="870" y="172" fill="#35d6ff" font-size="10" text-anchor="middle" opacity="0.7">SAP Batch Proc</text>
-    </g>
-    <g>
-      <rect x="770" y="210" width="200" height="55" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a" stroke-width="1"/>
-      <text x="870" y="242" fill="#35d6ff" font-size="10" text-anchor="middle" opacity="0.7">Customer Portal</text>
-    </g>
-    <g>
-      <rect x="770" y="280" width="200" height="55" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a" stroke-width="1"/>
-      <text x="870" y="312" fill="#35d6ff" font-size="10" text-anchor="middle" opacity="0.7">Payment Gateway</text>
-    </g>
-    <g>
-      <rect x="770" y="350" width="200" height="55" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a" stroke-width="1"/>
-      <text x="870" y="382" fill="#35d6ff" font-size="10" text-anchor="middle" opacity="0.7">ERP Hub</text>
-    </g>
-    <g>
-      <rect x="770" y="420" width="200" height="55" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a" stroke-width="1"/>
-      <text x="870" y="452" fill="#35d6ff" font-size="10" text-anchor="middle" opacity="0.7">Inventory Sync</text>
-    </g>
-    <!-- Connection lines -->
-    <g stroke="#2a3b63" stroke-width="1" stroke-dasharray="4,4" opacity="0.3">
-      <line x1="210" y1="115" x2="770" y2="97"/>
-      <line x1="210" y1="225" x2="770" y2="167"/>
-      <line x1="210" y1="335" x2="770" y2="312"/>
-      <line x1="500" y1="280" x2="350" y2="400"/>
-      <line x1="500" y1="280" x2="500" y2="400"/>
-      <line x1="500" y1="280" x2="650" y2="400"/>
+
+    <!-- APP SERVICES (right, 6 boxes, each 65px tall with 8px gap) -->
+    <g><rect x="720" y="55"  width="250" height="65" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a"/></g>
+    <g><rect x="720" y="128" width="250" height="65" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a"/></g>
+    <g><rect x="720" y="201" width="250" height="65" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a"/></g>
+    <g><rect x="720" y="274" width="250" height="65" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a"/></g>
+    <g><rect x="720" y="347" width="250" height="65" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a"/></g>
+    <g><rect x="720" y="420" width="250" height="65" rx="6" fill="url(#rack-grad)" stroke="#1a4a6a"/></g>
+
+    <!-- CONNECTION LINES -->
+    <g stroke="#2a3b63" stroke-width="1" stroke-dasharray="4,4" opacity="0.2">
+      <line x1="280" y1="100" x2="720" y2="87"/>
+      <line x1="280" y1="130" x2="720" y2="233"/>
+      <line x1="280" y1="155" x2="720" y2="452"/>
+      <line x1="280" y1="260" x2="720" y2="160"/>
+      <line x1="280" y1="290" x2="720" y2="379"/>
+      <line x1="280" y1="410" x2="720" y2="306"/>
+      <line x1="500" y1="240" x2="420" y2="340"/>
+      <line x1="500" y1="240" x2="585" y2="340"/>
+      <line x1="500" y1="240" x2="500" y2="440"/>
     </g>
   `;
   return svg;
@@ -169,9 +156,12 @@ function createFallbackSVG() {
 function addHotspots(wrapper, triplets) {
   // Clear existing hotspots
   Object.keys(hotspotEls).forEach((k) => delete hotspotEls[k]);
+  const placed = new Set(); // dedupe shared components (e.g. same subnet in multiple triplets)
 
   triplets.forEach((triplet) => {
     [triplet.application, triplet.infrastructure, triplet.network].forEach((comp) => {
+      if (placed.has(comp.id)) return;
+      placed.add(comp.id);
       const dot = document.createElement("div");
       dot.className = "hotspot";
       dot.style.left = `${comp.x}%`;

@@ -269,6 +269,19 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/config-info")
+def config_info() -> dict[str, str]:
+    return {
+        "databricks_host": cfg.databricks_host,
+        "spans_table": cfg.spans_table,
+        "logs_table": cfg.logs_table,
+        "metrics_table": cfg.metrics_table,
+        "traces_endpoint": emitter.traces_endpoint,
+        "logs_endpoint": emitter.logs_endpoint,
+        "metrics_endpoint": emitter.metrics_endpoint,
+    }
+
+
 @app.get("/api/events")
 def list_events() -> dict[str, list[EventDefinition]]:
     return {domain.value: definitions for domain, definitions in EVENT_CATALOG.items()}
@@ -414,6 +427,55 @@ def ask_genie(req: GenieAskRequest) -> GenieAskResponse:
         sql_query=sql_query,
         rows=rows,
     )
+
+
+@app.get("/api/table-counts")
+def table_counts() -> dict[str, Any]:
+    """Return row counts for all three OTel tables."""
+    query = f"""
+    SELECT 'spans' AS tbl, COUNT(*) AS cnt FROM {cfg.spans_table}
+    UNION ALL
+    SELECT 'logs' AS tbl, COUNT(*) AS cnt FROM {cfg.logs_table}
+    UNION ALL
+    SELECT 'metrics' AS tbl, COUNT(*) AS cnt FROM {cfg.metrics_table}
+    """
+    cols, rows = _run_sql(query)
+    result = {}
+    for row in rows:
+        result[str(row[0])] = int(row[1])
+    return {
+        "spans_table": cfg.spans_table,
+        "logs_table": cfg.logs_table,
+        "metrics_table": cfg.metrics_table,
+        "counts": result,
+    }
+
+
+@app.post("/api/truncate-tables")
+def truncate_tables() -> dict[str, Any]:
+    """Truncate all three OTel tables and return rows deleted."""
+    # Get counts before truncation
+    count_query = f"""
+    SELECT 'spans' AS tbl, COUNT(*) AS cnt FROM {cfg.spans_table}
+    UNION ALL
+    SELECT 'logs' AS tbl, COUNT(*) AS cnt FROM {cfg.logs_table}
+    UNION ALL
+    SELECT 'metrics' AS tbl, COUNT(*) AS cnt FROM {cfg.metrics_table}
+    """
+    _, count_rows = _run_sql(count_query)
+    before = {}
+    for row in count_rows:
+        before[str(row[0])] = int(row[1])
+
+    # Truncate each table
+    for table in [cfg.spans_table, cfg.logs_table, cfg.metrics_table]:
+        _run_sql(f"TRUNCATE TABLE {table}")
+
+    return {
+        "status": "ok",
+        "deleted": before,
+        "total_deleted": sum(before.values()),
+    }
 
 
 def _component_to_response(c: Any) -> ComponentResponse:
@@ -657,6 +719,165 @@ def emit_random(
         duplicate_ticket_pct=dup_pct,
         events=events_emitted,
     )
+
+
+@app.post("/api/emit-batch")
+def emit_batch(count: int = 0) -> dict[str, Any]:
+    """Emit a batch of events simulating concurrent activity across all active triplets.
+
+    If count=0 (default), picks 5-8 events randomly. Each active triplet gets one event
+    per tick, with severity weighted by config.
+    """
+    active_ids = streaming_config.active_triplet_ids or [t.id for t in catalog.triplets]
+    active_triplets = [t for t in catalog.triplets if t.id in active_ids]
+
+    if count <= 0:
+        # Default: one event per active triplet (5-6), occasionally an extra repeat
+        count = len(active_triplets) + random.randint(0, 2)
+
+    results: list[dict[str, Any]] = []
+
+    # First, emit one event per active triplet
+    shuffled = list(active_triplets)
+    random.shuffle(shuffled)
+
+    for i in range(min(count, len(shuffled))):
+        triplet = shuffled[i]
+        scenario = catalog.random_scenario(
+            severity_weights=streaming_config.severity_weights,
+            active_triplet_ids=[triplet.id],
+        )
+        result = _emit_single_scenario(scenario)
+        results.append(result)
+
+    # If count > number of triplets, fill remaining with random picks
+    remaining = count - len(shuffled)
+    for _ in range(max(0, remaining)):
+        scenario = catalog.random_scenario(
+            severity_weights=streaming_config.severity_weights,
+            active_triplet_ids=active_ids,
+        )
+        result = _emit_single_scenario(scenario)
+        results.append(result)
+
+    # Single flush for the whole batch
+    emitter.flush()
+
+    return {
+        "status": "ok",
+        "count": len(results),
+        "events": results,
+    }
+
+
+def _emit_single_scenario(scenario: Any) -> dict[str, Any]:
+    """Emit a single scenario's events and return the response dict (without flushing)."""
+    triplet = catalog.get_triplet(scenario.triplet_id)
+    if not triplet:
+        return {"error": "triplet not found"}
+
+    incident_id = f"INC-{uuid.uuid4().hex[:8].upper()}"
+    correlation_id = str(uuid.uuid4())
+    trace_id = uuid.uuid4().hex
+
+    users_affected = _random_int_in_range(scenario.estimated_user_impact_range)
+    revenue_usd = round(_random_in_range(scenario.estimated_revenue_impact_range), 2)
+    mttr_min = round(_random_in_range(scenario.mttr_minutes_range), 1)
+    snow_tickets = _random_int_in_range(scenario.servicenow_ticket_range)
+    dup_pct = round(_random_in_range(scenario.duplicate_ticket_pct_range), 1)
+
+    incident_attrs: dict[str, object] = {
+        "app.domain": scenario.event_sequence[0].domain.value,
+        "app.incident.id": incident_id,
+        "app.incident.priority": scenario.priority,
+        "app.incident.severity": scenario.severity,
+        "app.incident.blast_radius": scenario.blast_radius,
+        "app.impact.users_affected": users_affected,
+        "app.impact.revenue_usd": revenue_usd,
+        "app.impact.sla_breach": scenario.sla_breach,
+        "app.impact.mttr_minutes": mttr_min,
+        "app.servicenow.ticket_count": snow_tickets,
+        "app.servicenow.duplicate_pct": dup_pct,
+        "app.triplet.id": scenario.triplet_id,
+        "app.incident.root_cause": scenario.root_cause,
+        "correlation_id": correlation_id,
+    }
+
+    events_emitted = []
+
+    for step in scenario.event_sequence:
+        component = triplet.component_for_domain(step.domain)
+        step_attrs = {
+            **incident_attrs,
+            "app.component.id": component.id,
+            "app.component.type": component.component_type,
+            **step.attributes,
+        }
+        error_event = step.event_key in {"api_error", "frontend_exception", "dns_failure", "packet_loss_alert"}
+        base_route = f"/sim/{step.domain.value}/{step.event_key}"
+
+        emitter.emit_incident_trace(
+            domain=step.domain.value,
+            event=step.event_key,
+            label=step.event_label,
+            attributes={"trace_id": trace_id, "source_component": f"{step.domain.value}.simulator", "simulator.route": base_route},
+            incident_attrs=step_attrs,
+            child_name="downstream.call" if error_event else None,
+        )
+        emitter.emit_log(
+            level=logging.ERROR if error_event else logging.INFO,
+            message=f"{step.domain.value}::{step.event_key} triggered [{incident_id}]",
+            domain=step.domain.value,
+            event=step.event_key,
+            extra={"route": base_route, **step_attrs},
+        )
+        latency_ms = 140.0
+        if step.domain == Domain.applications:
+            latency_ms = 2200.0 if step.event_key == "slow_response" else 420.0 if error_event else 180.0
+        elif step.domain == Domain.networking:
+            latency_ms = 360.0 if error_event else 210.0
+        elif step.domain == Domain.infrastructure:
+            latency_ms = 280.0 if step.event_key == "node_resource_pressure" else 170.0
+        emitter.emit_metrics(domain=step.domain.value, route=base_route, latency_ms=latency_ms, error=error_event)
+
+        events_emitted.append({
+            "domain": step.domain.value,
+            "event_key": step.event_key,
+            "event_label": step.event_label,
+            "component_id": component.id,
+            "severity": scenario.severity,
+            "trace_id": trace_id,
+            "correlation_id": correlation_id,
+        })
+
+    emitter.emit_incident_metrics(
+        domain=scenario.event_sequence[0].domain.value,
+        severity=scenario.severity,
+        priority=scenario.priority,
+        service_name=triplet.application.label,
+        mttr_minutes=mttr_min,
+        revenue_impact_usd=revenue_usd,
+        users_affected=users_affected,
+    )
+
+    return {
+        "scenario_id": scenario.id,
+        "scenario_label": scenario.label,
+        "triplet_id": scenario.triplet_id,
+        "severity": scenario.severity,
+        "priority": scenario.priority,
+        "incident_id": incident_id,
+        "blast_radius": scenario.blast_radius,
+        "sla_breach": scenario.sla_breach,
+        "users_affected": users_affected,
+        "revenue_impact_usd": revenue_usd,
+        "mttr_minutes": mttr_min,
+        "root_cause": scenario.root_cause,
+        "servicenow_tickets": snow_tickets,
+        "duplicate_ticket_pct": dup_pct,
+        "events": events_emitted,
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()),
+    }
 
 
 @app.get("/")
