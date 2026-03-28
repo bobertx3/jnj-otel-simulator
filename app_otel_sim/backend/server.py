@@ -25,10 +25,10 @@ from .models import (
 )
 from .scenarios import ScenarioCatalog
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-FRONTEND_DIR = ROOT_DIR / "app" / "frontend"
+APP_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = APP_DIR / "frontend"
 
-load_dotenv(ROOT_DIR / ".env")
+load_dotenv(APP_DIR.parent / ".env")  # .env at repo root
 cfg = EmitterConfig.from_env()
 emitter = OTelEmitter(cfg)
 GENIE_SPACE_ID = os.getenv("GENIE_SPACE_ID", "01f11cbdc1b21b06b17d10fa4f58a5f1")
@@ -512,9 +512,114 @@ def list_scenarios() -> list[dict[str, Any]]:
             "blast_radius": s.blast_radius,
             "sla_breach": s.sla_breach,
             "root_cause": s.root_cause,
+            "revenue_min": s.estimated_revenue_impact_range[0],
+            "revenue_max": s.estimated_revenue_impact_range[1],
+            "users_min": s.estimated_user_impact_range[0],
+            "users_max": s.estimated_user_impact_range[1],
+            "mttr_min": s.mttr_minutes_range[0],
+            "mttr_max": s.mttr_minutes_range[1],
         }
         for s in catalog.scenarios
     ]
+
+
+# ---- Config DB endpoints ----
+
+CONFIG_SCENARIOS_TABLE = "bx3.otel_demo.config_scenarios"
+CONFIG_TRIPLETS_TABLE = "bx3.otel_demo.config_triplets"
+
+
+@app.get("/api/config-db/scenarios")
+def get_db_scenarios() -> list[dict[str, Any]]:
+    """Read scenario configs from DB."""
+    cols, rows = _run_sql(f"SELECT * FROM {CONFIG_SCENARIOS_TABLE} ORDER BY triplet_id, severity")
+    return _rows_to_dicts(cols, rows)
+
+
+@app.post("/api/config-db/scenarios/{scenario_id}")
+def update_db_scenario(scenario_id: str, body: dict[str, Any]) -> dict[str, str]:
+    """Update a scenario's impact ranges in the DB."""
+    allowed = {
+        "revenue_min", "revenue_max", "users_min", "users_max",
+        "mttr_min", "mttr_max", "sla_breach", "blast_radius",
+        "snow_tickets_min", "snow_tickets_max", "root_cause",
+        "label", "priority", "enabled",
+    }
+    sets = []
+    for k, v in body.items():
+        if k not in allowed:
+            continue
+        if isinstance(v, str):
+            safe = v.replace("'", "''")
+            sets.append(f"{k} = '{safe}'")
+        elif isinstance(v, bool):
+            sets.append(f"{k} = {str(v).lower()}")
+        else:
+            sets.append(f"{k} = {v}")
+    if not sets:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    sets.append("updated_at = current_timestamp()")
+    safe_id = scenario_id.replace("'", "''")
+    _run_sql(f"UPDATE {CONFIG_SCENARIOS_TABLE} SET {', '.join(sets)} WHERE scenario_id = '{safe_id}'")
+    return {"status": "updated", "scenario_id": scenario_id}
+
+
+@app.get("/api/config-db/triplets")
+def get_db_triplets() -> list[dict[str, Any]]:
+    """Read triplet configs from DB."""
+    cols, rows = _run_sql(f"SELECT * FROM {CONFIG_TRIPLETS_TABLE} ORDER BY triplet_id")
+    return _rows_to_dicts(cols, rows)
+
+
+@app.post("/api/config-db/reload")
+def reload_from_db() -> dict[str, Any]:
+    """Reload scenarios and triplets from config DB tables into memory."""
+    global catalog
+    try:
+        cols_t, rows_t = _run_sql(f"SELECT * FROM {CONFIG_TRIPLETS_TABLE} WHERE enabled = true")
+        cols_s, rows_s = _run_sql(f"SELECT * FROM {CONFIG_SCENARIOS_TABLE} WHERE enabled = true")
+        triplet_dicts = _rows_to_dicts(cols_t, rows_t)
+        scenario_dicts = _rows_to_dicts(cols_s, rows_s)
+
+        from .scenarios import Component, Triplet, Scenario, EventStep, Domain, DEFAULT_SCENARIOS
+
+        new_triplets = []
+        for t in triplet_dicts:
+            new_triplets.append(Triplet(
+                id=t["triplet_id"], label=t["label"],
+                application=Component(id=t["app_id"], label=t["app_label"], domain=Domain.applications,
+                                      component_type=t["app_type"], x=float(t["app_x"]), y=float(t["app_y"])),
+                infrastructure=Component(id=t["infra_id"], label=t["infra_label"], domain=Domain.infrastructure,
+                                         component_type=t["infra_type"], x=float(t["infra_x"]), y=float(t["infra_y"])),
+                network=Component(id=t["net_id"], label=t["net_label"], domain=Domain.networking,
+                                  component_type=t["net_type"], x=float(t["net_x"]), y=float(t["net_y"])),
+            ))
+
+        # Build new scenarios using DB impact ranges but keeping event sequences from defaults
+        default_map = {s.id: s for s in DEFAULT_SCENARIOS}
+        new_scenarios = []
+        for s in scenario_dicts:
+            base = default_map.get(s["scenario_id"])
+            event_seq = base.event_sequence if base else []
+            new_scenarios.append(Scenario(
+                id=s["scenario_id"], label=s["label"],
+                description=s.get("description", ""),
+                triplet_id=s["triplet_id"],
+                severity=s["severity"], priority=s["priority"],
+                event_sequence=event_seq,
+                estimated_user_impact_range=(int(s["users_min"]), int(s["users_max"])),
+                estimated_revenue_impact_range=(float(s["revenue_min"]), float(s["revenue_max"])),
+                sla_breach=bool(s.get("sla_breach", False)),
+                blast_radius=int(s.get("blast_radius", 1)),
+                servicenow_ticket_range=(int(s.get("snow_tickets_min", 1)), int(s.get("snow_tickets_max", 5))),
+                mttr_minutes_range=(float(s.get("mttr_min", 5)), float(s.get("mttr_max", 30))),
+                root_cause=s.get("root_cause", ""),
+            ))
+
+        catalog = ScenarioCatalog(triplets=new_triplets, scenarios=new_scenarios)
+        return {"status": "reloaded", "triplets": len(new_triplets), "scenarios": len(new_scenarios)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reload failed: {e}")
 
 
 @app.get("/api/config")

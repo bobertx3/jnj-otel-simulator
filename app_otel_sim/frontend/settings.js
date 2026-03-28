@@ -89,6 +89,22 @@ function renderSettings(container, triplets, config, onChange) {
         <p class="settings-hint">Enable/disable which application chains are active</p>
         <div id="triplet-toggles" class="triplet-list"></div>
       </div>
+
+      <div class="settings-section scenario-section">
+        <div class="scenario-header">
+          <div>
+            <h3>Scenario Impact Ranges</h3>
+            <p class="settings-hint">Configure revenue, user impact, and MTTR ranges per scenario. Stored in <code>bx3.otel_demo.config_scenarios</code></p>
+          </div>
+          <div class="scenario-actions">
+            <button type="button" class="control-btn" id="btn-load-db" title="Load from config tables">Load from DB</button>
+            <button type="button" class="control-btn start-btn" id="btn-reload-catalog" title="Apply DB config to running simulator">Apply &amp; Reload</button>
+          </div>
+        </div>
+        <div id="scenario-config-container" class="scenario-config-container">
+          <div class="settings-hint" style="padding:16px;text-align:center">Click "Load from DB" to view scenario configurations</div>
+        </div>
+      </div>
     </div>
   `;
   container.innerHTML = html;
@@ -116,6 +132,10 @@ function renderSettings(container, triplets, config, onChange) {
     toggleContainer.appendChild(card);
   });
 
+  // Wire up scenario DB buttons
+  container.querySelector("#btn-load-db").addEventListener("click", loadScenariosFromDB);
+  container.querySelector("#btn-reload-catalog").addEventListener("click", reloadCatalogFromDB);
+
   // Wire up event handlers
   function emitChange() {
     const updated = readConfigFromUI(triplets);
@@ -142,6 +162,107 @@ function renderSettings(container, triplets, config, onChange) {
     cb.addEventListener("change", () => {
       cb.closest(".triplet-card").classList.toggle("active", cb.checked);
       emitChange();
+    });
+  });
+}
+
+// ---- Scenario DB Config ----
+
+async function loadScenariosFromDB() {
+  const container = document.getElementById("scenario-config-container");
+  container.innerHTML = `<div class="settings-hint" style="padding:16px;text-align:center">Loading scenarios from DB...</div>`;
+  try {
+    const res = await fetch("/api/config-db/scenarios");
+    const scenarios = await res.json();
+    renderScenarioConfig(container, scenarios);
+  } catch (err) {
+    container.innerHTML = `<div class="settings-hint" style="padding:16px;text-align:center;color:var(--critical-color)">Failed to load: ${err.message}</div>`;
+  }
+}
+
+async function reloadCatalogFromDB() {
+  const btn = document.getElementById("btn-reload-catalog");
+  btn.textContent = "Reloading...";
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/config-db/reload", { method: "POST" });
+    const data = await res.json();
+    btn.textContent = `Loaded ${data.scenarios} scenarios`;
+    setTimeout(() => { btn.textContent = "Apply & Reload"; btn.disabled = false; }, 2000);
+  } catch (err) {
+    btn.textContent = "Error";
+    btn.disabled = false;
+  }
+}
+
+function renderScenarioConfig(container, scenarios) {
+  // Group by triplet
+  const grouped = {};
+  for (const s of scenarios) {
+    if (!grouped[s.triplet_id]) grouped[s.triplet_id] = [];
+    grouped[s.triplet_id].push(s);
+  }
+
+  let html = "";
+  for (const [tripletId, items] of Object.entries(grouped)) {
+    html += `<div class="scenario-group">`;
+    html += `<div class="scenario-group-header">${tripletId}</div>`;
+    html += `<table class="scenario-table"><thead><tr>
+      <th>Scenario</th><th>Sev</th><th>Pri</th>
+      <th>Revenue Min</th><th>Revenue Max</th>
+      <th>Users Min</th><th>Users Max</th>
+      <th>MTTR Min</th><th>MTTR Max</th>
+      <th>SLA</th><th>Blast</th><th></th>
+    </tr></thead><tbody>`;
+
+    for (const s of items) {
+      const sevClass = s.severity === "critical" ? "critical" : s.severity === "warning" ? "warning" : "normal";
+      html += `<tr class="scenario-row" data-id="${s.scenario_id}">
+        <td class="sc-label">${s.label}</td>
+        <td><span class="sc-sev ${sevClass}">${s.severity}</span></td>
+        <td>${s.priority}</td>
+        <td><input type="number" class="sc-input" data-field="revenue_min" value="${s.revenue_min}" step="1000"></td>
+        <td><input type="number" class="sc-input" data-field="revenue_max" value="${s.revenue_max}" step="1000"></td>
+        <td><input type="number" class="sc-input" data-field="users_min" value="${s.users_min}" step="10"></td>
+        <td><input type="number" class="sc-input" data-field="users_max" value="${s.users_max}" step="10"></td>
+        <td><input type="number" class="sc-input sc-narrow" data-field="mttr_min" value="${s.mttr_min}" step="5"></td>
+        <td><input type="number" class="sc-input sc-narrow" data-field="mttr_max" value="${s.mttr_max}" step="5"></td>
+        <td><input type="checkbox" data-field="sla_breach" ${s.sla_breach ? "checked" : ""}></td>
+        <td><input type="number" class="sc-input sc-narrow" data-field="blast_radius" value="${s.blast_radius}" min="1" max="6" step="1"></td>
+        <td><button type="button" class="sc-save-btn" data-id="${s.scenario_id}">Save</button></td>
+      </tr>`;
+    }
+    html += `</tbody></table></div>`;
+  }
+
+  container.innerHTML = html;
+
+  // Wire save buttons
+  container.querySelectorAll(".sc-save-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest("tr");
+      const scenarioId = btn.dataset.id;
+      const body = {};
+      row.querySelectorAll(".sc-input").forEach((inp) => {
+        body[inp.dataset.field] = parseFloat(inp.value) || 0;
+      });
+      row.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+        body[cb.dataset.field] = cb.checked;
+      });
+      btn.textContent = "...";
+      try {
+        await fetch(`/api/config-db/scenarios/${encodeURIComponent(scenarioId)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        btn.textContent = "Saved";
+        btn.style.color = "var(--normal-color)";
+        setTimeout(() => { btn.textContent = "Save"; btn.style.color = ""; }, 1500);
+      } catch {
+        btn.textContent = "Error";
+        setTimeout(() => { btn.textContent = "Save"; }, 1500);
+      }
     });
   });
 }

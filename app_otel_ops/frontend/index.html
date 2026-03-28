@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OTel Operational Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-container">
+
+      <!-- Header -->
+      <header class="topbar">
+        <div>
+          <h1>OTel Operational Dashboard</h1>
+          <p>Real-Time Telemetry Monitor — Databricks Zerobus OTel</p>
+        </div>
+        <div class="topbar-right">
+          <div class="status-pill" id="health-pill">Checking...</div>
+          <div class="last-update">
+            <small>LAST UPDATE</small>
+            <span id="last-update-time">--:--:--</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- KPI Cards -->
+      <div class="kpi-bar">
+        <div class="kpi-card spans">
+          <div class="kpi-label">&#9889; Total Spans</div>
+          <div class="kpi-value" id="kpi-spans">0</div>
+        </div>
+        <div class="kpi-card incidents">
+          <div class="kpi-label">&#9888; Active Incidents</div>
+          <div class="kpi-value" id="kpi-incidents">0</div>
+        </div>
+        <div class="kpi-card critical">
+          <div class="kpi-label">&#10060; Critical Alerts</div>
+          <div class="kpi-value" id="kpi-critical">0</div>
+        </div>
+        <div class="kpi-card rate">
+          <div class="kpi-label">&#128339; Events / Min</div>
+          <div class="kpi-value" id="kpi-rate">0</div>
+        </div>
+      </div>
+
+      <!-- Time Range -->
+      <div class="time-range-bar">
+        <span class="time-range-label">Time Range</span>
+        <button class="range-btn" data-range="5m">Last 5m</button>
+        <button class="range-btn" data-range="15m">Last 15m</button>
+        <button class="range-btn active" data-range="30m">Last 30m</button>
+        <button class="range-btn" data-range="1h">Last 1h</button>
+      </div>
+
+      <!-- Main Layout -->
+      <div class="main-layout">
+
+        <!-- Left: Domain Overview -->
+        <div class="domain-overview">
+          <div class="overview-header">
+            <h2>Domain Overview</h2>
+            <span class="count" id="component-count">0 components</span>
+          </div>
+          <div id="domain-container">
+            <div class="loading">Loading telemetry data...</div>
+          </div>
+        </div>
+
+        <!-- Right: Detail Panel -->
+        <div class="detail-panel" id="detail-panel">
+          <div class="detail-empty">
+            <div class="icon">&#9881;</div>
+            <p><strong>Select a component to view details</strong></p>
+            <p>Click any component card on the left</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <script src="/static/components.js"></script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

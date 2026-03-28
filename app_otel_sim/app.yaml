@@ -1,0 +1,27 @@
+command:
+  - uvicorn
+  - backend.server:app
+  - --host
+  - 0.0.0.0
+  - --port
+  - "8000"
+
+env:
+  - name: DATABRICKS_HOST
+    value: https://e2-demo-field-eng.cloud.databricks.com
+  - name: DATABRICKS_CATALOG
+    value: bx3
+  - name: DATABRICKS_SCHEMA
+    value: otel_demo
+  - name: OTEL_SERVICE_NAME
+    value: otel-simulator
+  - name: OTEL_SPANS_TABLE
+    value: bx3.otel_demo.otel_spans_v2
+  - name: OTEL_LOGS_TABLE
+    value: bx3.otel_demo.otel_logs_v2
+  - name: OTEL_METRICS_TABLE
+    value: bx3.otel_demo.otel_metrics
+  - name: DATABRICKS_WAREHOUSE_ID
+    value: "862f1d757f0424f7"
+  - name: GENIE_SPACE_ID
+    value: "01f11cbdc1b21b06b17d10fa4f58a5f1"

@@ -29,25 +29,43 @@ class EmitterConfig:
 
     @classmethod
     def from_env(cls) -> "EmitterConfig":
-        required = [
-            "DATABRICKS_HOST",
-            "DATABRICKS_TOKEN",
-            "OTEL_SERVICE_NAME",
-            "OTEL_SPANS_TABLE",
-            "OTEL_LOGS_TABLE",
-            "OTEL_METRICS_TABLE",
-        ]
-        missing = [k for k in required if not os.getenv(k)]
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Try explicit token, then SDK default auth (Databricks Apps runtime)
+        token = os.getenv("DATABRICKS_TOKEN", "")
+        if not token:
+            try:
+                from databricks.sdk import WorkspaceClient
+                w = WorkspaceClient()
+                # Use the SDK's token provider for Apps SP auth
+                header = w.config.authenticate()
+                if header and "Authorization" in header:
+                    token = header["Authorization"].replace("Bearer ", "")
+                logger.info(f"Got token from Databricks SDK: {bool(token)}")
+            except Exception as e:
+                logger.warning(f"SDK auth fallback failed: {e}")
+
+        required = {
+            "DATABRICKS_HOST": os.getenv("DATABRICKS_HOST", ""),
+            "OTEL_SERVICE_NAME": os.getenv("OTEL_SERVICE_NAME", ""),
+            "OTEL_SPANS_TABLE": os.getenv("OTEL_SPANS_TABLE", ""),
+            "OTEL_LOGS_TABLE": os.getenv("OTEL_LOGS_TABLE", ""),
+            "OTEL_METRICS_TABLE": os.getenv("OTEL_METRICS_TABLE", ""),
+        }
+        missing = [k for k, v in required.items() if not v]
+        if not token:
+            missing.insert(0, "DATABRICKS_TOKEN")
         if missing:
             raise ValueError(f"Missing required .env keys: {', '.join(missing)}")
 
         return cls(
-            databricks_host=os.environ["DATABRICKS_HOST"].rstrip("/"),
-            databricks_token=os.environ["DATABRICKS_TOKEN"],
-            service_name=os.environ["OTEL_SERVICE_NAME"],
-            spans_table=os.environ["OTEL_SPANS_TABLE"],
-            logs_table=os.environ["OTEL_LOGS_TABLE"],
-            metrics_table=os.environ["OTEL_METRICS_TABLE"],
+            databricks_host=required["DATABRICKS_HOST"].rstrip("/"),
+            databricks_token=token,
+            service_name=required["OTEL_SERVICE_NAME"],
+            spans_table=required["OTEL_SPANS_TABLE"],
+            logs_table=required["OTEL_LOGS_TABLE"],
+            metrics_table=required["OTEL_METRICS_TABLE"],
         )
 
 
