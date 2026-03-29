@@ -1,4 +1,4 @@
-"""SQL queries for the OTel Operational Dashboard."""
+"""SQL queries for the EO Operational Dashboard."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ RANGE_MAP = {
     "5m": 5,
     "15m": 15,
     "30m": 30,
-    "1h": 60,
+    "all": 525600,
     "6h": 360,
     "24h": 1440,
 }

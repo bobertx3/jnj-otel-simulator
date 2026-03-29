@@ -482,6 +482,352 @@ body {
   font-size: 13px;
 }
 
+/* ---- Modal ---- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(1, 5, 18, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-card {
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #0b142a;
+  border: 1px solid #2a3b63;
+  border-radius: 12px;
+  padding: 14px;
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: 1px solid #2b3f68;
+  background: transparent;
+  color: #b7c8ed;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* ---- Data Flow Button ---- */
+
+.dataflow-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #101b35;
+  color: var(--app);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.dataflow-btn:hover {
+  background: #1a2a4d;
+}
+
+/* ---- Data Flow Modal ---- */
+
+.dataflow-card {
+  width: min(1060px, 95vw);
+}
+
+.dataflow-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.dataflow-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.dataflow-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.df-expand-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #101b35;
+  color: var(--app);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+  margin-right: 32px;
+  transition: background 0.15s;
+}
+
+.df-expand-btn:hover {
+  background: #1a2a4d;
+}
+
+.dataflow-pipeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.df-stage {
+  flex: 1;
+  min-width: 0;
+  background: #101b35;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.df-stage-blue { border-color: rgba(74, 144, 226, 0.4); }
+.df-stage-orange { border-color: rgba(245, 158, 66, 0.4); }
+.df-stage-green { border-color: rgba(52, 211, 153, 0.4); }
+
+.df-stage-number {
+  position: absolute;
+  top: -14px;
+  left: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #4a90e2;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.4);
+}
+.df-stage-number.orange {
+  background: #f59e42;
+  box-shadow: 0 2px 8px rgba(245, 158, 66, 0.4);
+}
+.df-stage-number.green {
+  background: #34d399;
+  box-shadow: 0 2px 8px rgba(52, 211, 153, 0.4);
+}
+
+.df-stage-subtitle {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.df-value-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.df-value-points li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+.df-vp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.df-vp-dot.blue { background: #4a90e2; }
+.df-vp-dot.orange { background: #f59e42; }
+.df-vp-dot.green { background: #34d399; }
+
+.df-stage:hover {
+  border-color: rgba(53, 214, 255, 0.35);
+  box-shadow: 0 0 16px rgba(53, 214, 255, 0.06);
+}
+
+.df-stage.expanded {
+  border-color: var(--app);
+  box-shadow: 0 0 20px rgba(53, 214, 255, 0.1);
+}
+
+.df-stage-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.df-stage-icon {
+  font-size: 22px;
+}
+
+.df-stage-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.df-stage-expand {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, margin-top 0.3s ease;
+  margin-top: 0;
+}
+
+.df-stage.expanded .df-stage-expand {
+  max-height: 400px;
+  margin-top: 12px;
+}
+
+.df-sub-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(38, 54, 91, 0.4);
+}
+
+.df-sub-item:first-child {
+  border-top: none;
+}
+
+.df-sub-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.df-sub-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.df-sub-detail {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.df-sub-url {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.df-sub-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(38, 54, 91, 0.4);
+}
+
+.df-sub-footer code {
+  font-size: 9px;
+  padding: 2px 6px;
+  background: #0a1225;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: #8ab4f0;
+}
+
+.df-sub-item.infra-accent .df-sub-label { color: var(--infra); }
+.df-sub-item.network-accent .df-sub-label { color: var(--network); }
+.df-sub-item.app-accent .df-sub-label { color: var(--app); }
+
+.df-pipe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  min-width: 70px;
+  align-self: center;
+  gap: 6px;
+}
+
+.df-pipe-track {
+  position: relative;
+  width: 50px;
+  height: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.df-pipe-line {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(38,54,91,0.3), var(--app), rgba(38,54,91,0.3));
+  border-radius: 1px;
+}
+
+.df-pipe-track::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 7px solid var(--app);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+
+.df-pipe-label {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.df-particle {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--app);
+  box-shadow: 0 0 6px var(--app), 0 0 12px rgba(53, 214, 255, 0.3);
+  transform: translateY(-50%);
+  animation: df-flow 1.8s ease-in-out infinite;
+  opacity: 0;
+}
+
+.df-particle.p2 { animation-delay: 0.6s; }
+.df-particle.p3 { animation-delay: 1.2s; }
+
+@keyframes df-flow {
+  0% { left: -5px; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: calc(100% + 5px); opacity: 0; }
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .kpi-bar {

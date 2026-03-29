@@ -1184,6 +1184,7 @@ pre {
   font-size: 12px;
   font-weight: 500;
   flex-shrink: 0;
+  margin-right: 32px;
   transition: background 0.15s;
 }
 

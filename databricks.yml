@@ -11,7 +11,7 @@ targets:
       apps:
         otel-simulator:
           name: otel-simulator
-          description: "OTel Telemetry Simulator — Data Center Edition"
+          description: "EO Telemetry Simulator — Data Center Edition"
           source_code_path: app_otel_sim
           config:
             command:
@@ -46,7 +46,7 @@ targets:
 
         otel-operational-app:
           name: otel-operational-app
-          description: "OTel Operational Dashboard — Real-Time Telemetry Monitor"
+          description: "EO Operational Dashboard — Real-Time Telemetry Monitor"
           source_code_path: app_otel_ops
           config:
             command:

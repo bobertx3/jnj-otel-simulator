@@ -1,4 +1,4 @@
-"""OTel Operational Dashboard — read-only backend."""
+"""EO Operational Dashboard — read-only backend."""
 
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ def _run_sql(query: str) -> list[dict[str, Any]]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-app = FastAPI(title="OTel Operational Dashboard", version="0.1.0")
+app = FastAPI(title="EO Operational Dashboard", version="0.1.0")
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 
@@ -84,7 +84,13 @@ def index():
 @app.get("/api/health")
 def health():
     ok = bool(DATABRICKS_HOST and WAREHOUSE_ID and SPANS_TABLE)
-    return {"status": "ok" if ok else "misconfigured", "host": DATABRICKS_HOST}
+    return {
+        "status": "ok" if ok else "misconfigured",
+        "host": DATABRICKS_HOST,
+        "spans_table": SPANS_TABLE,
+        "logs_table": LOGS_TABLE,
+        "metrics_table": METRICS_TABLE,
+    }
 
 
 @app.get("/api/kpis")

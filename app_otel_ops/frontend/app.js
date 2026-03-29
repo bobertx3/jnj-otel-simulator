@@ -1,11 +1,11 @@
 /**
- * app.js — Main orchestrator for OTel Operational Dashboard
+ * app.js — Main orchestrator for EO Operational Dashboard
  *
  * Polls every 5 seconds. Each poll fetches KPIs and domain overview
  * independently (async). Changed values flash to signal fresh data.
  */
 
-let currentRange = "30m";
+let currentRange = "all";
 let selectedComponentId = null;
 let refreshTimer = null;
 const REFRESH_INTERVAL = 5000; // 5 seconds
@@ -185,4 +185,53 @@ function updateTimestamp() {
   const now = new Date();
   document.getElementById("last-update-time").textContent =
     now.toLocaleTimeString("en-US", { hour12: false });
+}
+
+// ---- Data Flow Modal ----
+
+const dataflowModal = document.getElementById("dataflow-modal");
+const btnDataflow = document.getElementById("btn-dataflow");
+const closeDataflow = document.getElementById("close-dataflow");
+const dfStages = document.querySelectorAll(".df-stage");
+const btnExpandAll = document.getElementById("btn-expand-all");
+let dfExpanded = false;
+
+btnDataflow.addEventListener("click", () => {
+  dataflowModal.classList.remove("hidden");
+  dataflowModal.setAttribute("aria-hidden", "false");
+  loadDataflowInfo();
+});
+
+btnExpandAll.addEventListener("click", () => {
+  dfExpanded = !dfExpanded;
+  dfStages.forEach((s) => s.classList.toggle("expanded", dfExpanded));
+  btnExpandAll.textContent = dfExpanded ? "Collapse" : "Expand";
+});
+
+closeDataflow.addEventListener("click", () => {
+  dataflowModal.classList.add("hidden");
+  dataflowModal.setAttribute("aria-hidden", "true");
+});
+
+dataflowModal.addEventListener("click", (e) => {
+  if (e.target === dataflowModal) {
+    dataflowModal.classList.add("hidden");
+    dataflowModal.setAttribute("aria-hidden", "true");
+  }
+});
+
+async function loadDataflowInfo() {
+  try {
+    const res = await fetch("/api/health");
+    const data = await res.json();
+    const el = (id, val) => {
+      const node = document.getElementById(id);
+      if (node) node.textContent = val || "—";
+    };
+    el("df-spans-table", data.spans_table);
+    el("df-logs-table", data.logs_table);
+    el("df-metrics-table", data.metrics_table);
+  } catch (err) {
+    console.error("Dataflow info error:", err);
+  }
 }
