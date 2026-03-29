@@ -16,6 +16,7 @@ from databricks import sql as dbsql
 from .queries import (
     parse_range,
     kpi_query,
+    domain_summary_query,
     domain_overview_query,
     component_detail_query,
     recent_events_query,
@@ -106,6 +107,25 @@ def get_kpis(range: str = Query("30m", alias="range")):
         "critical_alerts": int(r.get("critical_alerts") or 0),
         "events_per_min": float(r.get("events_per_min") or 0),
     }
+
+
+@app.get("/api/domain-summary")
+def get_domain_summary(range: str = Query("all", alias="range")):
+    minutes = parse_range(range)
+    rows = _run_sql(domain_summary_query(SPANS_TABLE, minutes))
+    result = {}
+    for r in rows:
+        domain = r.get("domain", "unknown")
+        result[domain] = {
+            "total_events": int(r.get("total_events") or 0),
+            "components": int(r.get("components") or 0),
+            "incidents": int(r.get("incidents") or 0),
+            "critical": int(r.get("critical") or 0),
+            "warnings": int(r.get("warnings") or 0),
+            "revenue_impact": int(r.get("revenue_impact") or 0),
+            "users_affected": int(r.get("users_affected") or 0),
+        }
+    return result
 
 
 @app.get("/api/domain-overview")

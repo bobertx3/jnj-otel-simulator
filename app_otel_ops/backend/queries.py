@@ -86,6 +86,23 @@ LIMIT 50
 """
 
 
+def domain_summary_query(spans_table: str, minutes: int) -> str:
+    return f"""
+SELECT
+  {DOMAIN_CASE} AS domain,
+  COUNT(*) AS total_events,
+  COUNT(DISTINCT attributes:['app.component.id']::STRING) AS components,
+  COUNT(DISTINCT attributes:['app.incident.id']::STRING) AS incidents,
+  SUM(CASE WHEN attributes:['app.incident.severity']::STRING = 'critical' THEN 1 ELSE 0 END) AS critical,
+  SUM(CASE WHEN attributes:['app.incident.severity']::STRING = 'warning' THEN 1 ELSE 0 END) AS warnings,
+  ROUND(SUM(CAST(attributes:['app.impact.revenue_usd']::STRING AS DOUBLE)), 0) AS revenue_impact,
+  ROUND(SUM(CAST(attributes:['app.impact.users_affected']::STRING AS DOUBLE)), 0) AS users_affected
+FROM {spans_table}
+WHERE time >= current_timestamp() - INTERVAL {minutes} MINUTES
+GROUP BY 1
+"""
+
+
 def recent_events_query(spans_table: str, minutes: int, limit: int = 50) -> str:
     return f"""
 SELECT

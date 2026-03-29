@@ -54,6 +54,46 @@
         <button class="range-btn active" data-range="all">All</button>
       </div>
 
+      <!-- Domain Summary -->
+      <div class="domain-summary" id="domain-summary">
+        <div class="ds-card infra" data-domain="infrastructure">
+          <div class="ds-header">
+            <span class="ds-icon">&#9881;</span>
+            <span class="ds-label">Infrastructure</span>
+          </div>
+          <div class="ds-stats">
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-infra-components">—</div><div class="ds-stat-label">Components</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-infra-events">—</div><div class="ds-stat-label">Events</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-infra-incidents">—</div><div class="ds-stat-label">Incidents</div></div>
+            <div class="ds-stat"><div class="ds-stat-value critical-val" id="ds-infra-critical">—</div><div class="ds-stat-label">Critical</div></div>
+          </div>
+        </div>
+        <div class="ds-card network" data-domain="networking">
+          <div class="ds-header">
+            <span class="ds-icon">&#128268;</span>
+            <span class="ds-label">Networking</span>
+          </div>
+          <div class="ds-stats">
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-net-components">—</div><div class="ds-stat-label">Components</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-net-events">—</div><div class="ds-stat-label">Events</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-net-incidents">—</div><div class="ds-stat-label">Incidents</div></div>
+            <div class="ds-stat"><div class="ds-stat-value critical-val" id="ds-net-critical">—</div><div class="ds-stat-label">Critical</div></div>
+          </div>
+        </div>
+        <div class="ds-card apps" data-domain="applications">
+          <div class="ds-header">
+            <span class="ds-icon">&#128187;</span>
+            <span class="ds-label">Applications</span>
+          </div>
+          <div class="ds-stats">
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-app-components">—</div><div class="ds-stat-label">Components</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-app-events">—</div><div class="ds-stat-label">Events</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-app-incidents">—</div><div class="ds-stat-label">Incidents</div></div>
+            <div class="ds-stat"><div class="ds-stat-value critical-val" id="ds-app-critical">—</div><div class="ds-stat-label">Critical</div></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Main Layout -->
       <div class="main-layout">
 

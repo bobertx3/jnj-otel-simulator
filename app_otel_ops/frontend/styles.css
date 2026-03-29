@@ -482,6 +482,78 @@ body {
   font-size: 13px;
 }
 
+/* ---- Domain Summary ---- */
+
+.domain-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.ds-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ds-card.infra { border-left: 3px solid var(--infra); }
+.ds-card.network { border-left: 3px solid var(--network); }
+.ds-card.apps { border-left: 3px solid var(--app); }
+
+.ds-card:hover {
+  border-color: rgba(53, 214, 255, 0.25);
+  box-shadow: 0 0 12px rgba(53, 214, 255, 0.05);
+}
+
+.ds-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ds-icon {
+  font-size: 18px;
+}
+
+.ds-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ds-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.ds-stat {
+  text-align: center;
+}
+
+.ds-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.ds-stat-value.critical-val {
+  color: var(--critical-color);
+}
+
+.ds-stat-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
 /* ---- Modal ---- */
 
 .modal {

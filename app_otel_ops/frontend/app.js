@@ -45,6 +45,7 @@ async function checkHealth() {
 function loadData() {
   // Fire all fetches independently — don't await sequentially
   loadKPIs();
+  loadDomainSummary();
   loadDomainOverview();
   if (selectedComponentId) {
     loadComponentDetails(selectedComponentId);
@@ -59,6 +60,40 @@ async function loadKPIs() {
     updateTimestamp();
   } catch (err) {
     console.error("KPI load error:", err);
+  }
+}
+
+async function loadDomainSummary() {
+  try {
+    const res = await fetch(`/api/domain-summary?range=${currentRange}`);
+    const data = await res.json();
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) {
+        const prev = el.textContent;
+        el.textContent = formatNumber(val);
+        if (prev !== "—" && prev !== el.textContent) flashElement(el.closest(".ds-card"));
+      }
+    };
+    const infra = data.infrastructure || {};
+    set("ds-infra-components", infra.components || 0);
+    set("ds-infra-events", infra.total_events || 0);
+    set("ds-infra-incidents", infra.incidents || 0);
+    set("ds-infra-critical", infra.critical || 0);
+
+    const net = data.networking || {};
+    set("ds-net-components", net.components || 0);
+    set("ds-net-events", net.total_events || 0);
+    set("ds-net-incidents", net.incidents || 0);
+    set("ds-net-critical", net.critical || 0);
+
+    const apps = data.applications || {};
+    set("ds-app-components", apps.components || 0);
+    set("ds-app-events", apps.total_events || 0);
+    set("ds-app-incidents", apps.incidents || 0);
+    set("ds-app-critical", apps.critical || 0);
+  } catch (err) {
+    console.error("Domain summary error:", err);
   }
 }
 
