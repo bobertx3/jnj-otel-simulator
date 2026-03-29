@@ -37,32 +37,53 @@ LOGS_TABLE = os.getenv("OTEL_LOGS_TABLE", "")
 METRICS_TABLE = os.getenv("OTEL_METRICS_TABLE", "")
 
 
-def _get_token() -> str:
-    """Get Databricks token from env or SDK auth."""
-    token = os.getenv("DATABRICKS_TOKEN", "")
-    if not token:
-        try:
-            from databricks.sdk import WorkspaceClient
-            w = WorkspaceClient()
-            header = w.config.authenticate()
-            if header and "Authorization" in header:
-                token = header["Authorization"].replace("Bearer ", "")
-        except Exception as e:
-            logger.warning(f"SDK auth failed: {e}")
-    return token
+def _resolve_sql_host(cfg: Any) -> str:
+    """Workspace hostname for SQL connector (no https://).
+
+    In Databricks Apps, prefer SDK host (matches the deployment workspace). A static
+    DATABRICKS_HOST in app.yaml can point at another workspace and break OAuth + SQL.
+    """
+    env_h = os.getenv("DATABRICKS_HOST", "").strip()
+    sdk_h = getattr(cfg, "host", None) or ""
+    if os.getenv("DATABRICKS_CLIENT_ID"):
+        raw = sdk_h or env_h
+    else:
+        raw = env_h or sdk_h
+    if not raw:
+        return ""
+    return str(raw).replace("https://", "").split("/")[0].rstrip("/")
 
 
 def _run_sql(query: str) -> list[dict[str, Any]]:
     """Execute a SQL query and return rows as dicts."""
-    token = _get_token()
-    if not token:
-        raise HTTPException(status_code=503, detail="No Databricks token available")
+    from databricks.sdk.core import Config
+
+    cfg = Config()
+    host = _resolve_sql_host(cfg)
+    if not host:
+        raise HTTPException(
+            status_code=503,
+            detail="No Databricks host (set DATABRICKS_HOST or deploy with workspace config)",
+        )
+    if not WAREHOUSE_ID:
+        raise HTTPException(status_code=503, detail="DATABRICKS_WAREHOUSE_ID not set")
+    http_path = f"/sql/1.0/warehouses/{WAREHOUSE_ID}"
+    pat = os.getenv("DATABRICKS_TOKEN", "").strip()
     try:
-        with dbsql.connect(
-            server_hostname=DATABRICKS_HOST.replace("https://", ""),
-            http_path=f"/sql/1.0/warehouses/{WAREHOUSE_ID}",
-            access_token=token,
-        ) as conn:
+        if pat:
+            conn = dbsql.connect(
+                server_hostname=host,
+                http_path=http_path,
+                access_token=pat,
+            )
+        else:
+            # Databricks Apps OAuth (service principal) or local default auth chain
+            conn = dbsql.connect(
+                server_hostname=host,
+                http_path=http_path,
+                credentials_provider=cfg.authenticate,
+            )
+        with conn:
             with conn.cursor() as cursor:
                 cursor.execute(query)
                 columns = [desc[0] for desc in cursor.description] if cursor.description else []
@@ -84,10 +105,18 @@ def index():
 
 @app.get("/api/health")
 def health():
-    ok = bool(DATABRICKS_HOST and WAREHOUSE_ID and SPANS_TABLE)
+    try:
+        from databricks.sdk.core import Config
+
+        cfg = Config()
+        resolved = _resolve_sql_host(cfg)
+    except Exception:
+        resolved = ""
+    ok = bool(resolved and WAREHOUSE_ID and SPANS_TABLE)
     return {
         "status": "ok" if ok else "misconfigured",
         "host": DATABRICKS_HOST,
+        "resolved_host": resolved,
         "spans_table": SPANS_TABLE,
         "logs_table": LOGS_TABLE,
         "metrics_table": METRICS_TABLE,

@@ -1,3 +1,5 @@
+# Backend resolves DATABRICKS_HOST from the deployment workspace when OAuth (Databricks Apps)
+# is active; keep or drop the DATABRICKS_HOST entry depending on whether you need a fixed URL.
 command:
   - uvicorn
   - backend.server:app
