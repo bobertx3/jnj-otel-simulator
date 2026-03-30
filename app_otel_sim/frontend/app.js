@@ -410,11 +410,31 @@ function openRefreshModal() {
   refreshModal.classList.remove("hidden");
   refreshModal.setAttribute("aria-hidden", "false");
 
-  // Fetch counts
+  // Fetch counts (read body once; gateways may return HTML e.g. "Error during request to server")
   fetch("/api/table-counts")
-    .then((r) => {
-      if (!r.ok) throw new Error("Failed to load counts — is DATABRICKS_WAREHOUSE_ID set?");
-      return r.json();
+    .then(async (r) => {
+      const text = await r.text();
+      if (!r.ok) {
+        let detail;
+        try {
+          const body = JSON.parse(text);
+          detail = body.detail ?? r.statusText;
+          if (Array.isArray(detail)) {
+            detail = detail.map((d) => (d && d.msg) || JSON.stringify(d)).join("; ");
+          } else if (detail && typeof detail !== "string") {
+            detail = JSON.stringify(detail);
+          }
+        } catch {
+          detail =
+            text.trim().slice(0, 800) || `HTTP ${r.status} ${r.statusText || ""}`.trim();
+        }
+        throw new Error(detail || "Failed to load table counts");
+      }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Invalid JSON from /api/table-counts: ${text.slice(0, 200)}`);
+      }
     })
     .then((data) => {
       refreshLoading.style.display = "none";
@@ -439,7 +459,11 @@ function openRefreshModal() {
       refreshLoading.style.display = "none";
       refreshResult.style.display = "";
       refreshResult.className = "refresh-result error";
-      refreshResult.textContent = err.message;
+      const msg =
+        err && err.message
+          ? err.message
+          : "Network error — check browser devtools Network tab for /api/table-counts";
+      refreshResult.textContent = msg;
       btnConfirmRefresh.disabled = true;
     });
 }
@@ -535,6 +559,13 @@ streamSpeedInput.addEventListener("input", (e) => {
   try {
     await checkHealth();
     await loadTriplets();
+    // Sync speed slider to persisted interval_ms (default 2000ms in settings.js).
+    // This does not slow streaming — it fixes a prior bug where the UI showed 500ms
+    // while the engine used 2000ms. streaming.js tick/stagger logic was not changed.
+    if (streamSpeedInput && streamSpeedValue) {
+      streamSpeedInput.value = String(config.interval_ms);
+      streamSpeedValue.textContent = `${config.interval_ms}ms`;
+    }
     initSettings();
     loadDataflowInfo();
   } catch (err) {

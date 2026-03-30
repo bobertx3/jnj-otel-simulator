@@ -37,7 +37,7 @@ targets:
               - name: OTEL_METRICS_TABLE
                 value: bx3.otel_demo.otel_metrics
               - name: DATABRICKS_WAREHOUSE_ID
-                value: "862f1d757f0424f7"
+                value: "67bbe3acc184b4aa"
               - name: GENIE_SPACE_ID
                 value: "01f11cbdc1b21b06b17d10fa4f58a5f1"
           permissions:
@@ -66,7 +66,7 @@ targets:
               - name: OTEL_METRICS_TABLE
                 value: bx3.otel_demo.otel_metrics
               - name: DATABRICKS_WAREHOUSE_ID
-                value: "862f1d757f0424f7"
+                value: "67bbe3acc184b4aa"
           permissions:
             - user_name: robert.leach@databricks.com
               level: CAN_MANAGE

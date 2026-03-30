@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.requests import Request
 from databricks import sql
 
 from .emitter import EmitterConfig, OTelEmitter
@@ -28,15 +29,32 @@ from .scenarios import ScenarioCatalog
 APP_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = APP_DIR / "frontend"
 
+# Default warehouse for this repo’s bundle (databricks.yml dev target). Databricks Apps
+# deployments do not always inherit bundle `env`; runtime may omit DATABRICKS_WAREHOUSE_ID.
+# Override with env DATABRICKS_WAREHOUSE_ID (or WAREHOUSE_ID) in the App / .env.
+_DEFAULT_SQL_WAREHOUSE_ID = "67bbe3acc184b4aa"
+
 load_dotenv(APP_DIR.parent / ".env")  # .env at repo root
+logger = logging.getLogger(__name__)
 cfg = EmitterConfig.from_env()
 emitter = OTelEmitter(cfg)
 GENIE_SPACE_ID = os.getenv("GENIE_SPACE_ID", "01f11cbdc1b21b06b17d10fa4f58a5f1")
-WAREHOUSE_ID = os.getenv("DATABRICKS_WAREHOUSE_ID", "")
 catalog = ScenarioCatalog()
 streaming_config = StreamingConfig()
 
 app = FastAPI(title="OTel Simulator App", version="0.1.0")
+
+
+@app.middleware("http")
+async def no_cache_static_assets(request: Request, call_next):
+    """Avoid stale JS/CSS in browsers after Databricks App redeploys."""
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static/") and (path.endswith(".js") or path.endswith(".css")):
+        response.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
+    return response
+
+
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 
@@ -212,21 +230,72 @@ def _emit_for_event(domain: Domain, event_key: str, event_label: str) -> tuple[d
     return telemetry_summary, raw_telemetry
 
 
+def _resolve_sql_host() -> tuple[Any, str]:
+    """Workspace hostname for Databricks SQL (no https://). Prefer SDK host in Apps."""
+    from databricks.sdk.core import Config
+
+    cfg_sdk = Config()
+    env_h = os.getenv("DATABRICKS_HOST", "").strip()
+    sdk_h = getattr(cfg_sdk, "host", None) or ""
+    if os.getenv("DATABRICKS_CLIENT_ID"):
+        raw = sdk_h or env_h
+    else:
+        raw = env_h or sdk_h
+    if not raw:
+        return cfg_sdk, ""
+    host = str(raw).replace("https://", "").split("/")[0].rstrip("/")
+    return cfg_sdk, host
+
+
+def _warehouse_id() -> str:
+    for key in ("DATABRICKS_WAREHOUSE_ID", "WAREHOUSE_ID"):
+        v = os.getenv(key, "").strip()
+        if v:
+            return v
+    return _DEFAULT_SQL_WAREHOUSE_ID
+
+
+def _get_access_token() -> str:
+    """Return a bearer token: explicit PAT first, then SDK/App SP auth."""
+    pat = os.getenv("DATABRICKS_TOKEN", "").strip()
+    if pat:
+        return pat
+    from databricks.sdk import WorkspaceClient
+    w = WorkspaceClient()
+    header = w.config.authenticate()
+    if header and "Authorization" in header:
+        return header["Authorization"].replace("Bearer ", "")
+    raise HTTPException(status_code=500, detail="No Databricks credentials available")
+
+
 def _run_sql(query: str) -> tuple[list[str], list[tuple[Any, ...]]]:
-    if not WAREHOUSE_ID:
+    # Warehouse: env vars if set, else bundle default (Apps often omit bundle env).
+    wh = _warehouse_id()
+    _, host = _resolve_sql_host()
+    if not host:
         raise HTTPException(
-            status_code=400, detail="DATABRICKS_WAREHOUSE_ID is required for summary queries"
+            status_code=400,
+            detail="Could not resolve Databricks host for SQL (set DATABRICKS_HOST or deploy as an App)",
         )
-    with sql.connect(
-        server_hostname=cfg.databricks_host.replace("https://", ""),
-        http_path=f"/sql/1.0/warehouses/{WAREHOUSE_ID}",
-        access_token=cfg.databricks_token,
-    ) as conn:
-        with conn.cursor() as cur:
-            cur.execute(query)
-            cols = [c[0] for c in cur.description] if cur.description else []
-            rows = cur.fetchall()
-            return cols, rows
+    http_path = f"/sql/1.0/warehouses/{wh}"
+    try:
+        token = _get_access_token()
+        conn = sql.connect(
+            server_hostname=host,
+            http_path=http_path,
+            access_token=token,
+        )
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(query)
+                cols = [c[0] for c in cur.description] if cur.description else []
+                rows = cur.fetchall()
+                return cols, rows
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("SQL query failed")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 def _rows_to_dicts(columns: list[str], rows: list[tuple[Any, ...]]) -> list[dict[str, Any]]:
@@ -271,6 +340,11 @@ def health() -> dict[str, str]:
 
 @app.get("/api/config-info")
 def config_info() -> dict[str, str]:
+    wh = _warehouse_id()
+    from_env = bool(
+        os.getenv("DATABRICKS_WAREHOUSE_ID", "").strip()
+        or os.getenv("WAREHOUSE_ID", "").strip()
+    )
     return {
         "databricks_host": cfg.databricks_host,
         "spans_table": cfg.spans_table,
@@ -279,6 +353,8 @@ def config_info() -> dict[str, str]:
         "traces_endpoint": emitter.traces_endpoint,
         "logs_endpoint": emitter.logs_endpoint,
         "metrics_endpoint": emitter.metrics_endpoint,
+        "sql_warehouse_id": wh,
+        "sql_warehouse_from_env": "true" if from_env else "false",
     }
 
 
