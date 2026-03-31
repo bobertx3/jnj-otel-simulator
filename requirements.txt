@@ -4,5 +4,6 @@ opentelemetry-exporter-otlp-proto-http
 python-dotenv
 PyYAML
 databricks-sql-connector
+databricks-sdk
 fastapi
 uvicorn

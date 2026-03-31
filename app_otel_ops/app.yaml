@@ -1,0 +1,21 @@
+# Backend resolves DATABRICKS_HOST from the deployment workspace when OAuth (Databricks Apps)
+# is active; keep or drop the DATABRICKS_HOST entry depending on whether you need a fixed URL.
+command:
+  - uvicorn
+  - backend.server:app
+  - --host
+  - 0.0.0.0
+  - --port
+  - "8000"
+
+env:
+  - name: DATABRICKS_HOST
+    value: https://e2-demo-field-eng.cloud.databricks.com
+  - name: OTEL_SPANS_TABLE
+    value: bx3.otel_demo.otel_spans_v2
+  - name: OTEL_LOGS_TABLE
+    value: bx3.otel_demo.otel_logs_v2
+  - name: OTEL_METRICS_TABLE
+    value: bx3.otel_demo.otel_metrics
+  - name: DATABRICKS_WAREHOUSE_ID
+    value: "862f1d757f0424f7"

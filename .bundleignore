@@ -1,0 +1,16 @@
+.claude/
+.ai-dev-kit/
+.cursor/
+.mcp.json
+.git/
+.venv/
+reference/
+notebooks/
+img/
+clean_up_uc.py
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.env.*
+!.env.example

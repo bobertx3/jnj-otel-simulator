@@ -1,9 +1,0 @@
-opentelemetry-api
-opentelemetry-sdk
-opentelemetry-exporter-otlp-proto-http
-python-dotenv
-PyYAML
-databricks-sdk
-databricks-sql-connector
-fastapi
-uvicorn

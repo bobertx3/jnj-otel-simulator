@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EO Telemetry Simulator</title>
+    <link rel="stylesheet" href="/static/styles.css?v=19" />
+  </head>
+  <body>
+    <div class="app-container">
+
+      <!-- Header -->
+      <header class="topbar">
+        <div>
+          <h1>EO Telemetry Simulator</h1>
+          <p>Data Center OTel Simulator — Traces, Logs, Metrics to Databricks</p>
+        </div>
+        <div class="topbar-right">
+          <button type="button" class="dataflow-btn" id="btn-dataflow">Data Flow</button>
+          <button type="button" class="refresh-demo-btn" id="btn-refresh-demo">Refresh Demo</button>
+          <div class="status-pill" id="health-pill">Checking API...</div>
+        </div>
+      </header>
+
+      <!-- Stats bar -->
+      <div class="stats-bar" id="stats-bar">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Events Sent</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-rps">0</div>
+          <div class="stat-label">Events / sec</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-incidents">0</div>
+          <div class="stat-label">Incidents</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-connection">
+            <span class="conn-dot idle"></span> Manual
+          </div>
+          <div class="stat-label">Mode</div>
+        </div>
+      </div>
+
+      <!-- Mode & controls bar -->
+      <div class="controls-bar">
+        <div class="controls-left">
+          <nav class="main-tabs">
+            <button type="button" class="main-tab active" data-tab="datacenter">Data Center</button>
+            <button type="button" class="main-tab" data-tab="settings">Settings</button>
+          </nav>
+        </div>
+        <div class="controls-right">
+          <div class="mode-toggle">
+            <button type="button" class="mode-btn active" id="btn-manual">Manual</button>
+            <button type="button" class="mode-btn" id="btn-streaming">Streaming</button>
+          </div>
+          <div class="streaming-controls hidden" id="streaming-controls">
+            <button type="button" class="control-btn start-btn" id="btn-start-stream">Start</button>
+            <button type="button" class="control-btn stop-btn hidden" id="btn-stop-stream">Stop</button>
+            <label class="speed-label">
+              <input type="range" id="stream-speed" min="200" max="5000" step="100" value="500">
+              <span id="stream-speed-value">500ms</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Center tab -->
+      <div id="tab-datacenter" class="tab-content active">
+        <div id="datacenter-container" class="datacenter-container"></div>
+      </div>
+
+      <!-- Settings tab -->
+      <div id="tab-settings" class="tab-content">
+        <div id="settings-container"></div>
+      </div>
+
+      <!-- Event Stream (bottom of page) -->
+      <section class="event-stream-section">
+        <div class="stream-header">
+          <h3>Event Stream</h3>
+          <span class="event-count" id="event-count">0 events</span>
+          <button id="btn-legend" type="button" class="legend-btn">Legend</button>
+          <button id="clear-log" type="button" class="clear-btn">Clear</button>
+        </div>
+        <div class="event-stream-container" id="event-stream">
+          <div class="stream-empty" id="stream-empty">
+            Click a hotspot or start streaming to see events here
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Data Flow Modal -->
+    <section id="dataflow-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card dataflow-card">
+        <button type="button" id="close-dataflow" class="close-btn">x</button>
+        <div class="dataflow-top">
+          <div>
+            <h2 class="dataflow-title">Telemetry Data Flow</h2>
+            <p class="dataflow-subtitle">How telemetry flows from domains through OTel endpoints to Delta Lake</p>
+          </div>
+          <button type="button" class="df-expand-btn" id="btn-expand-all">Expand</button>
+        </div>
+
+        <div class="dataflow-pipeline">
+          <!-- Box 1: Telemetry Sources -->
+          <div class="df-stage df-stage-blue" id="df-stage-domains" data-stage="domains">
+            <div class="df-stage-number">1</div>
+            <div class="df-stage-header">
+              <span class="df-stage-icon">&#128225;</span>
+              <span class="df-stage-label">Telemetry Sources</span>
+            </div>
+            <div class="df-stage-subtitle">Applications &amp; Infrastructure</div>
+            <ul class="df-value-points">
+              <li><span class="df-vp-dot blue"></span>OpenTelemetry SDK</li>
+              <li><span class="df-vp-dot blue"></span>Fluent Bit Agents</li>
+              <li><span class="df-vp-dot blue"></span>StatsD / Prometheus</li>
+              <li><span class="df-vp-dot blue"></span>Custom Instrumentation</li>
+            </ul>
+            <div class="df-stage-expand" id="df-expand-domains">
+              <div class="df-sub-item infra-accent">
+                <span class="df-sub-dot" style="background:var(--infra)"></span>
+                <div>
+                  <div class="df-sub-label">Infrastructure</div>
+                  <div class="df-sub-detail">Pod lifecycle, node pressure, autoscaler, rollouts</div>
+                </div>
+              </div>
+              <div class="df-sub-item network-accent">
+                <span class="df-sub-dot" style="background:var(--network)"></span>
+                <div>
+                  <div class="df-sub-label">Networking</div>
+                  <div class="df-sub-detail">Flow logs, latency spikes, packet loss, DNS failures</div>
+                </div>
+              </div>
+              <div class="df-sub-item app-accent">
+                <span class="df-sub-dot" style="background:var(--app)"></span>
+                <div>
+                  <div class="df-sub-label">Applications</div>
+                  <div class="df-sub-detail">API traces, errors, timeouts, batch jobs, CDC sync</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Arrow 1 -->
+          <div class="df-pipe">
+            <div class="df-pipe-track">
+              <div class="df-pipe-line"></div>
+              <div class="df-particle p1"></div>
+              <div class="df-particle p2"></div>
+              <div class="df-particle p3"></div>
+            </div>
+            <div class="df-pipe-label">OTLP/HTTP</div>
+          </div>
+
+          <!-- Box 2: Zerobus Ingest -->
+          <div class="df-stage df-stage-orange" id="df-stage-endpoints" data-stage="endpoints">
+            <div class="df-stage-number orange">2</div>
+            <div class="df-stage-header">
+              <span class="df-stage-icon">&#9889;</span>
+              <span class="df-stage-label">Zerobus Ingest</span>
+            </div>
+            <div class="df-stage-subtitle">High-throughput ingestion</div>
+            <ul class="df-value-points">
+              <li><span class="df-vp-dot orange"></span>Schema validation</li>
+              <li><span class="df-vp-dot orange"></span>Routing &amp; enrichment</li>
+              <li><span class="df-vp-dot orange"></span>Back-pressure handling</li>
+              <li><span class="df-vp-dot orange"></span>Multi-tenant isolation</li>
+            </ul>
+            <div class="df-stage-expand" id="df-expand-endpoints">
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:#f59e42"></span>
+                <div>
+                  <div class="df-sub-label">Traces</div>
+                  <div class="df-sub-url">/api/2.0/tracing/otel/v1/traces</div>
+                </div>
+              </div>
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:#f59e42"></span>
+                <div>
+                  <div class="df-sub-label">Logs</div>
+                  <div class="df-sub-url">/api/2.0/tracing/otel/v1/logs</div>
+                </div>
+              </div>
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:#f59e42"></span>
+                <div>
+                  <div class="df-sub-label">Metrics</div>
+                  <div class="df-sub-url">/api/2.0/otel/v1/metrics</div>
+                </div>
+              </div>
+              <div class="df-sub-footer">
+                <code>Authorization: Bearer &lt;token&gt;</code>
+                <code>X-Databricks-UC-Table-Name: &lt;table&gt;</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Arrow 2 -->
+          <div class="df-pipe">
+            <div class="df-pipe-track">
+              <div class="df-pipe-line"></div>
+              <div class="df-particle p1"></div>
+              <div class="df-particle p2"></div>
+              <div class="df-particle p3"></div>
+            </div>
+            <div class="df-pipe-label">UC Routing</div>
+          </div>
+
+          <!-- Box 3: Unity Catalog -->
+          <div class="df-stage df-stage-green" id="df-stage-delta" data-stage="delta">
+            <div class="df-stage-number green">3</div>
+            <div class="df-stage-header">
+              <span class="df-stage-icon">&#9651;</span>
+              <span class="df-stage-label">Unity Catalog</span>
+            </div>
+            <div class="df-stage-subtitle">Governed Delta Lake storage</div>
+            <ul class="df-value-points">
+              <li><span class="df-vp-dot green"></span>ACID transactions</li>
+              <li><span class="df-vp-dot green"></span>Fine-grained access control</li>
+              <li><span class="df-vp-dot green"></span>Schema evolution</li>
+              <li><span class="df-vp-dot green"></span>Cross-workspace sharing</li>
+            </ul>
+            <div class="df-stage-expand" id="df-expand-delta">
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:var(--normal-color)"></span>
+                <div>
+                  <div class="df-sub-label">Spans Table</div>
+                  <div class="df-sub-url" id="df-spans-table"></div>
+                </div>
+              </div>
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:var(--normal-color)"></span>
+                <div>
+                  <div class="df-sub-label">Logs Table</div>
+                  <div class="df-sub-url" id="df-logs-table"></div>
+                </div>
+              </div>
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:var(--normal-color)"></span>
+                <div>
+                  <div class="df-sub-label">Metrics Table</div>
+                  <div class="df-sub-url" id="df-metrics-table"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Refresh Demo Modal -->
+    <section id="refresh-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card refresh-card">
+        <button type="button" id="close-refresh" class="close-btn">x</button>
+        <h2 class="refresh-title">Refresh Demo</h2>
+        <p class="refresh-subtitle">This will truncate all OTel tables and reset the demo data.</p>
+
+        <div id="refresh-loading" class="refresh-loading">Loading table counts...</div>
+
+        <div id="refresh-counts" class="refresh-counts" style="display:none">
+          <table class="refresh-table">
+            <thead>
+              <tr><th>Table</th><th>Rows</th></tr>
+            </thead>
+            <tbody id="refresh-table-body"></tbody>
+            <tfoot>
+              <tr class="refresh-total"><td>Total</td><td id="refresh-total-count">0</td></tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div id="refresh-result" class="refresh-result" style="display:none"></div>
+
+        <div class="refresh-actions" id="refresh-actions">
+          <button type="button" class="control-btn" id="btn-cancel-refresh" style="background:#101b35;color:var(--muted)">Cancel</button>
+          <button type="button" class="control-btn stop-btn" id="btn-confirm-refresh">Truncate All Tables</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Legend Modal -->
+    <section id="legend-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card legend-card">
+        <button type="button" id="close-legend" class="close-btn">x</button>
+        <h2 style="margin:0 0 12px">Event Stream Legend</h2>
+
+        <div class="legend-section">
+          <h3>Priority Levels</h3>
+          <div class="legend-row">
+            <span class="ev-tag priority" style="min-width:28px;text-align:center">P1</span>
+            <div><strong>Critical</strong> — Full outage, major revenue impact, SLA breach<br><span class="legend-example">e.g., "Payment Gateway Down"</span></div>
+          </div>
+          <div class="legend-row">
+            <span class="ev-tag priority" style="min-width:28px;text-align:center">P2</span>
+            <div><strong>High</strong> — Significant degradation, large user impact<br><span class="legend-example">e.g., "SAP Batch Queue Delay"</span></div>
+          </div>
+          <div class="legend-row">
+            <span class="ev-tag priority" style="min-width:28px;text-align:center">P3</span>
+            <div><strong>Medium</strong> — Partial issues, moderate impact<br><span class="legend-example">e.g., "Order API Slow Response"</span></div>
+          </div>
+          <div class="legend-row">
+            <span class="ev-tag priority" style="min-width:28px;text-align:center">P4</span>
+            <div><strong>Low</strong> — Normal operations, no impact<br><span class="legend-example">e.g., "Order API Request" — healthy baseline</span></div>
+          </div>
+        </div>
+
+        <div class="legend-section">
+          <h3>Severity Indicators</h3>
+          <div class="legend-row">
+            <span class="ev-level-dot normal"></span>
+            <div><strong>Normal</strong> — Healthy baseline traffic, no action needed</div>
+          </div>
+          <div class="legend-row">
+            <span class="ev-level-dot warn"></span>
+            <div><strong>Warning</strong> — Degraded performance, fires app + infra layer events</div>
+          </div>
+          <div class="legend-row">
+            <span class="ev-level-dot critical"></span>
+            <div><strong>Critical</strong> — Full cascade across all 3 layers (app → infra → network)</div>
+          </div>
+        </div>
+
+        <div class="legend-section">
+          <h3>SLA Badge</h3>
+          <div class="legend-row">
+            <span class="ev-tag sla">SLA</span>
+            <div><strong>SLA Breach</strong> — Incident violates Service Level Agreement thresholds (e.g., 99.9% uptime, MTTR under 60 min). Only critical P1 scenarios trigger SLA breaches. Counts toward the "SLA Breaches" KPI on the executive dashboard.</div>
+          </div>
+        </div>
+
+        <div class="legend-section">
+          <h3>Triplet Tags</h3>
+          <div class="legend-row">
+            <span class="ev-tag triplet">order-mgmt-chain</span>
+            <div>Shows which application triplet (App → Infra → Network chain) the event belongs to. Each triplet maps one application to its infrastructure pod and network subnet.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Event Detail Modal -->
+    <section id="event-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card">
+        <button type="button" id="close-modal" class="close-btn">x</button>
+        <div class="chips" id="modal-chips"></div>
+        <h3 id="modal-title">Event</h3>
+        <div class="timestamp" id="modal-time"></div>
+
+        <div class="tabs">
+          <button type="button" class="tab-btn active" data-panel="impact">Impact Summary</button>
+          <button type="button" class="tab-btn" data-panel="raw">Raw Event</button>
+        </div>
+
+        <div id="panel-impact" class="detail-panel active">
+          <div class="kv"><span>Incident</span><code id="impact-incident"></code></div>
+          <div class="kv"><span>Scenario</span><code id="impact-scenario"></code></div>
+          <div class="kv"><span>Severity / Priority</span><code id="impact-severity"></code></div>
+          <div class="kv"><span>Root Cause</span><code id="impact-root-cause"></code></div>
+          <div class="kv"><span>Blast Radius</span><code id="impact-blast"></code></div>
+          <div class="kv"><span>Users Affected</span><code id="impact-users"></code></div>
+          <div class="kv"><span>Revenue Impact</span><code id="impact-revenue"></code></div>
+          <div class="kv"><span>MTTR</span><code id="impact-mttr"></code></div>
+          <div class="kv"><span>SLA Breach</span><code id="impact-sla"></code></div>
+          <div class="kv"><span>ServiceNow Tickets</span><code id="impact-snow"></code></div>
+          <div class="kv"><span>Events</span><code id="impact-events"></code></div>
+        </div>
+
+        <pre id="panel-raw" class="detail-panel"></pre>
+      </div>
+    </section>
+
+    <script src="/static/datacenter.js?v=19"></script>
+    <script src="/static/streaming.js?v=19"></script>
+    <script src="/static/settings.js?v=19"></script>
+    <script src="/static/app.js?v=19"></script>
+  </body>
+</html>

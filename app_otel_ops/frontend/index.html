@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EO Operational Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-container">
+
+      <!-- Header -->
+      <header class="topbar">
+        <div>
+          <h1>EO Operational Dashboard</h1>
+          <p>Real-Time Telemetry Monitor — Databricks Zerobus OTel</p>
+        </div>
+        <div class="topbar-right">
+          <button type="button" class="dataflow-btn" id="btn-dataflow">Data Flow</button>
+          <div class="status-pill" id="health-pill">Checking...</div>
+          <div class="last-update">
+            <small>LAST UPDATE</small>
+            <span id="last-update-time">--:--:--</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- KPI Cards -->
+      <div class="kpi-bar">
+        <div class="kpi-card spans">
+          <div class="kpi-label">&#9889; Total Spans</div>
+          <div class="kpi-value" id="kpi-spans">0</div>
+        </div>
+        <div class="kpi-card incidents">
+          <div class="kpi-label">&#9888; Active Incidents</div>
+          <div class="kpi-value" id="kpi-incidents">0</div>
+        </div>
+        <div class="kpi-card critical">
+          <div class="kpi-label">&#10060; Critical Alerts</div>
+          <div class="kpi-value" id="kpi-critical">0</div>
+        </div>
+        <div class="kpi-card rate">
+          <div class="kpi-label">&#128339; Events / Min</div>
+          <div class="kpi-value" id="kpi-rate">0</div>
+        </div>
+      </div>
+
+      <!-- Time Range -->
+      <div class="time-range-bar">
+        <span class="time-range-label">Time Range</span>
+        <button class="range-btn" data-range="5m">Last 5m</button>
+        <button class="range-btn" data-range="15m">Last 15m</button>
+        <button class="range-btn" data-range="30m">Last 30m</button>
+        <button class="range-btn active" data-range="all">All</button>
+      </div>
+
+      <!-- Domain Summary -->
+      <div class="domain-summary" id="domain-summary">
+        <div class="ds-card infra" data-domain="infrastructure">
+          <div class="ds-header">
+            <span class="ds-icon">&#9881;</span>
+            <span class="ds-label">Infrastructure</span>
+          </div>
+          <div class="ds-stats">
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-infra-components">—</div><div class="ds-stat-label">Components</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-infra-events">—</div><div class="ds-stat-label">Events</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-infra-incidents">—</div><div class="ds-stat-label">Incidents</div></div>
+            <div class="ds-stat"><div class="ds-stat-value critical-val" id="ds-infra-critical">—</div><div class="ds-stat-label">Critical</div></div>
+          </div>
+        </div>
+        <div class="ds-card network" data-domain="networking">
+          <div class="ds-header">
+            <span class="ds-icon">&#128268;</span>
+            <span class="ds-label">Networking</span>
+          </div>
+          <div class="ds-stats">
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-net-components">—</div><div class="ds-stat-label">Components</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-net-events">—</div><div class="ds-stat-label">Events</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-net-incidents">—</div><div class="ds-stat-label">Incidents</div></div>
+            <div class="ds-stat"><div class="ds-stat-value critical-val" id="ds-net-critical">—</div><div class="ds-stat-label">Critical</div></div>
+          </div>
+        </div>
+        <div class="ds-card apps" data-domain="applications">
+          <div class="ds-header">
+            <span class="ds-icon">&#128187;</span>
+            <span class="ds-label">Applications</span>
+          </div>
+          <div class="ds-stats">
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-app-components">—</div><div class="ds-stat-label">Components</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-app-events">—</div><div class="ds-stat-label">Events</div></div>
+            <div class="ds-stat"><div class="ds-stat-value" id="ds-app-incidents">—</div><div class="ds-stat-label">Incidents</div></div>
+            <div class="ds-stat"><div class="ds-stat-value critical-val" id="ds-app-critical">—</div><div class="ds-stat-label">Critical</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Layout -->
+      <div class="main-layout">
+
+        <!-- Left: Domain Overview -->
+        <div class="domain-overview">
+          <div class="overview-header">
+            <h2>Domain Overview</h2>
+            <span class="count" id="component-count">0 components</span>
+          </div>
+          <div id="domain-container">
+            <div class="loading">Loading telemetry data...</div>
+          </div>
+        </div>
+
+        <!-- Right: Detail Panel -->
+        <div class="detail-panel" id="detail-panel">
+          <div class="detail-empty">
+            <div class="icon">&#9881;</div>
+            <p><strong>Select a component to view details</strong></p>
+            <p>Click any component card on the left</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Data Flow Modal -->
+    <section id="dataflow-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card dataflow-card">
+        <button type="button" id="close-dataflow" class="close-btn">x</button>
+        <div class="dataflow-top">
+          <div>
+            <h2 class="dataflow-title">Telemetry Data Flow</h2>
+            <p class="dataflow-subtitle">How telemetry flows from domains through OTel endpoints to Delta Lake</p>
+          </div>
+          <button type="button" class="df-expand-btn" id="btn-expand-all">Expand</button>
+        </div>
+
+        <div class="dataflow-pipeline">
+          <!-- Box 1: Telemetry Sources -->
+          <div class="df-stage df-stage-blue" id="df-stage-domains" data-stage="domains">
+            <div class="df-stage-number">1</div>
+            <div class="df-stage-header">
+              <span class="df-stage-icon">&#128225;</span>
+              <span class="df-stage-label">Telemetry Sources</span>
+            </div>
+            <div class="df-stage-subtitle">Applications &amp; Infrastructure</div>
+            <ul class="df-value-points">
+              <li><span class="df-vp-dot blue"></span>OpenTelemetry SDK</li>
+              <li><span class="df-vp-dot blue"></span>Fluent Bit Agents</li>
+              <li><span class="df-vp-dot blue"></span>StatsD / Prometheus</li>
+              <li><span class="df-vp-dot blue"></span>Custom Instrumentation</li>
+            </ul>
+            <div class="df-stage-expand" id="df-expand-domains">
+              <div class="df-sub-item infra-accent">
+                <span class="df-sub-dot" style="background:var(--infra)"></span>
+                <div>
+                  <div class="df-sub-label">Infrastructure</div>
+                  <div class="df-sub-detail">Pod lifecycle, node pressure, autoscaler, rollouts</div>
+                </div>
+              </div>
+              <div class="df-sub-item network-accent">
+                <span class="df-sub-dot" style="background:var(--network)"></span>
+                <div>
+                  <div class="df-sub-label">Networking</div>
+                  <div class="df-sub-detail">Flow logs, latency spikes, packet loss, DNS failures</div>
+                </div>
+              </div>
+              <div class="df-sub-item app-accent">
+                <span class="df-sub-dot" style="background:var(--app)"></span>
+                <div>
+                  <div class="df-sub-label">Applications</div>
+                  <div class="df-sub-detail">API traces, errors, timeouts, batch jobs, CDC sync</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Arrow 1 -->
+          <div class="df-pipe">
+            <div class="df-pipe-track">
+              <div class="df-pipe-line"></div>
+              <div class="df-particle p1"></div>
+              <div class="df-particle p2"></div>
+              <div class="df-particle p3"></div>
+            </div>
+            <div class="df-pipe-label">OTLP/HTTP</div>
+          </div>
+
+          <!-- Box 2: Zerobus Ingest -->
+          <div class="df-stage df-stage-orange" id="df-stage-endpoints" data-stage="endpoints">
+            <div class="df-stage-number orange">2</div>
+            <div class="df-stage-header">
+              <span class="df-stage-icon">&#9889;</span>
+              <span class="df-stage-label">Zerobus Ingest</span>
+            </div>
+            <div class="df-stage-subtitle">High-throughput ingestion</div>
+            <ul class="df-value-points">
+              <li><span class="df-vp-dot orange"></span>Schema validation</li>
+              <li><span class="df-vp-dot orange"></span>Routing &amp; enrichment</li>
+              <li><span class="df-vp-dot orange"></span>Back-pressure handling</li>
+              <li><span class="df-vp-dot orange"></span>Multi-tenant isolation</li>
+            </ul>
+            <div class="df-stage-expand" id="df-expand-endpoints">
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:#f59e42"></span>
+                <div>
+                  <div class="df-sub-label">Traces</div>
+                  <div class="df-sub-url">/api/2.0/tracing/otel/v1/traces</div>
+                </div>
+              </div>
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:#f59e42"></span>
+                <div>
+                  <div class="df-sub-label">Logs</div>
+                  <div class="df-sub-url">/api/2.0/tracing/otel/v1/logs</div>
+                </div>
+              </div>
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:#f59e42"></span>
+                <div>
+                  <div class="df-sub-label">Metrics</div>
+                  <div class="df-sub-url">/api/2.0/otel/v1/metrics</div>
+                </div>
+              </div>
+              <div class="df-sub-footer">
+                <code>Authorization: Bearer &lt;token&gt;</code>
+                <code>X-Databricks-UC-Table-Name: &lt;table&gt;</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Arrow 2 -->
+          <div class="df-pipe">
+            <div class="df-pipe-track">
+              <div class="df-pipe-line"></div>
+              <div class="df-particle p1"></div>
+              <div class="df-particle p2"></div>
+              <div class="df-particle p3"></div>
+            </div>
+            <div class="df-pipe-label">UC Routing</div>
+          </div>
+
+          <!-- Box 3: Unity Catalog -->
+          <div class="df-stage df-stage-green" id="df-stage-delta" data-stage="delta">
+            <div class="df-stage-number green">3</div>
+            <div class="df-stage-header">
+              <span class="df-stage-icon">&#9651;</span>
+              <span class="df-stage-label">Unity Catalog</span>
+            </div>
+            <div class="df-stage-subtitle">Governed Delta Lake storage</div>
+            <ul class="df-value-points">
+              <li><span class="df-vp-dot green"></span>ACID transactions</li>
+              <li><span class="df-vp-dot green"></span>Fine-grained access control</li>
+              <li><span class="df-vp-dot green"></span>Schema evolution</li>
+              <li><span class="df-vp-dot green"></span>Cross-workspace sharing</li>
+            </ul>
+            <div class="df-stage-expand" id="df-expand-delta">
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:var(--normal-color)"></span>
+                <div>
+                  <div class="df-sub-label">Spans Table</div>
+                  <div class="df-sub-url" id="df-spans-table"></div>
+                </div>
+              </div>
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:var(--normal-color)"></span>
+                <div>
+                  <div class="df-sub-label">Logs Table</div>
+                  <div class="df-sub-url" id="df-logs-table"></div>
+                </div>
+              </div>
+              <div class="df-sub-item">
+                <span class="df-sub-dot" style="background:var(--normal-color)"></span>
+                <div>
+                  <div class="df-sub-label">Metrics Table</div>
+                  <div class="df-sub-url" id="df-metrics-table"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script src="/static/components.js"></script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
